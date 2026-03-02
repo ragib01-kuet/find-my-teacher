@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { TutorProfile, Profile, TuitionRequest, Deal, Report } from "@/types/database";
+import { TutorProfile, Profile, TuitionRequest, Deal, Report, Message as MessageType } from "@/types/database";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,27 +20,38 @@ import {
   CheckCircle,
   XCircle,
   Eye,
-  BarChart3,
   AlertTriangle,
   MessageCircle,
   Ban,
   FileText,
+  Trash2,
+  GraduationCap,
+  Heart,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
 
+interface StudentInfo {
+  user_id: string;
+  full_name: string;
+  phone: string | null;
+  created_at: string;
+  request_count: number;
+  favorite_tutor?: string;
+}
+
 const AdminDashboard = () => {
   const { user, role, loading: authLoading } = useAuth();
   const [pendingTutors, setPendingTutors] = useState<(TutorProfile & { profile?: Profile })[]>([]);
   const [allTutors, setAllTutors] = useState<(TutorProfile & { profile?: Profile })[]>([]);
-  const [requests, setRequests] = useState<TuitionRequest[]>([]);
-  const [deals, setDeals] = useState<Deal[]>([]);
+  const [students, setStudents] = useState<StudentInfo[]>([]);
+  const [requests, setRequests] = useState<(TuitionRequest & { student_name_resolved?: string; tutor_name_resolved?: string })[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
   const [selectedTutor, setSelectedTutor] = useState<(TutorProfile & { profile?: Profile }) | null>(null);
   const [adminNotes, setAdminNotes] = useState("");
-
-  // Stats
+  const [chatMessages, setChatMessages] = useState<(MessageType & { sender_name?: string })[]>([]);
+  const [selectedChat, setSelectedChat] = useState<TuitionRequest | null>(null);
   const [stats, setStats] = useState({ tutors: 0, students: 0, requests: 0, deals: 0 });
 
   useEffect(() => {
@@ -76,13 +87,52 @@ const AdminDashboard = () => {
         setAllTutors(enriched);
       }
 
-      // Requests
-      const { data: reqs } = await supabase.from("tuition_requests").select("*").order("created_at", { ascending: false });
-      if (reqs) setRequests(reqs as TuitionRequest[]);
+      // Students
+      const { data: studentRoles } = await supabase.from("user_roles").select("*").eq("role", "student");
+      if (studentRoles) {
+        const studentInfos = await Promise.all(
+          studentRoles.map(async (sr) => {
+            const { data: profile } = await supabase.from("profiles").select("*").eq("user_id", sr.user_id).single();
+            const { count } = await supabase.from("tuition_requests").select("*", { count: "exact", head: true }).eq("student_id", sr.user_id);
+            
+            // Find favorite tutor
+            const { data: reqs } = await supabase.from("tuition_requests").select("tutor_id").eq("student_id", sr.user_id);
+            let favTutor = "";
+            if (reqs && reqs.length > 0) {
+              const tutorCounts: Record<string, number> = {};
+              reqs.forEach((r: any) => { tutorCounts[r.tutor_id] = (tutorCounts[r.tutor_id] || 0) + 1; });
+              const topTutorId = Object.entries(tutorCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
+              if (topTutorId) {
+                const { data: tp } = await supabase.from("profiles").select("full_name").eq("user_id", topTutorId).single();
+                favTutor = tp?.full_name || "";
+              }
+            }
 
-      // Deals
-      const { data: d } = await supabase.from("deals").select("*").order("created_at", { ascending: false });
-      if (d) setDeals(d as Deal[]);
+            return {
+              user_id: sr.user_id,
+              full_name: profile?.full_name || "Unknown",
+              phone: profile?.phone || null,
+              created_at: profile?.created_at || "",
+              request_count: count || 0,
+              favorite_tutor: favTutor,
+            } as StudentInfo;
+          })
+        );
+        setStudents(studentInfos);
+      }
+
+      // Requests with names
+      const { data: reqs } = await supabase.from("tuition_requests").select("*").order("created_at", { ascending: false });
+      if (reqs) {
+        const enrichedReqs = await Promise.all(
+          (reqs as TuitionRequest[]).map(async (req) => {
+            const { data: sp } = await supabase.from("profiles").select("full_name").eq("user_id", req.student_id).single();
+            const { data: tp } = await supabase.from("profiles").select("full_name").eq("user_id", req.tutor_id).single();
+            return { ...req, student_name_resolved: sp?.full_name || "Unknown", tutor_name_resolved: tp?.full_name || "Unknown" };
+          })
+        );
+        setRequests(enrichedReqs);
+      }
 
       // Reports
       const { data: r } = await supabase.from("reports").select("*").order("created_at", { ascending: false });
@@ -104,6 +154,24 @@ const AdminDashboard = () => {
 
     fetchAll();
   }, [role]);
+
+  const viewChat = async (req: TuitionRequest) => {
+    setSelectedChat(req);
+    const { data } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("request_id", req.id)
+      .order("created_at", { ascending: true });
+    if (data) {
+      const enriched = await Promise.all(
+        (data as MessageType[]).map(async (m) => {
+          const { data: p } = await supabase.from("profiles").select("full_name").eq("user_id", m.sender_id).single();
+          return { ...m, sender_name: p?.full_name || "Unknown" };
+        })
+      );
+      setChatMessages(enriched);
+    }
+  };
 
   const handleApprove = async (tutor: TutorProfile) => {
     const { error } = await supabase
@@ -146,6 +214,15 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleDeleteStudent = async (userId: string) => {
+    // Remove their requests and profile data
+    await supabase.from("tuition_requests").delete().eq("student_id", userId);
+    await supabase.from("profiles").delete().eq("user_id", userId);
+    await supabase.from("user_roles").delete().eq("user_id", userId);
+    setStudents((prev) => prev.filter((s) => s.user_id !== userId));
+    toast.success("Student removed from platform");
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen">
@@ -162,6 +239,7 @@ const AdminDashboard = () => {
   const statusColor = (s: string) => {
     switch (s) {
       case "approved": return "bg-green-100 text-green-700";
+      case "accepted": return "bg-green-100 text-green-700";
       case "pending": return "bg-yellow-100 text-yellow-700";
       case "rejected": return "bg-red-100 text-red-700";
       case "suspended": return "bg-orange-100 text-orange-700";
@@ -173,21 +251,21 @@ const AdminDashboard = () => {
     <div className="min-h-screen">
       <Navbar />
       <div className="pt-16">
-        <div className="container py-8">
-          <div className="mb-8 flex items-center gap-3">
+        <div className="container py-6 px-4 sm:py-8">
+          <div className="mb-6 flex items-center gap-3 sm:mb-8">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-coral-gradient">
               <Shield className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="font-display text-2xl font-bold text-foreground">Admin Dashboard</h1>
-              <p className="text-sm text-muted-foreground">Manage the KUET Tuition Ecosystem</p>
+              <h1 className="font-display text-xl font-bold text-foreground sm:text-2xl">Admin Dashboard</h1>
+              <p className="text-xs text-muted-foreground sm:text-sm">Manage the KUET Tuition Ecosystem</p>
             </div>
           </div>
 
-          {/* Stats Grid */}
-          <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Stats */}
+          <div className="mb-6 grid gap-3 grid-cols-2 sm:mb-8 sm:gap-4 lg:grid-cols-4">
             {[
-              { label: "Total Tutors", value: stats.tutors, icon: Users, color: "text-coral" },
+              { label: "Tutors", value: stats.tutors, icon: GraduationCap, color: "text-coral" },
               { label: "Students", value: stats.students, icon: Users, color: "text-blue-500" },
               { label: "Requests", value: stats.requests, icon: MessageCircle, color: "text-gold" },
               { label: "Deals", value: stats.deals, icon: CheckCircle, color: "text-green-500" },
@@ -196,34 +274,37 @@ const AdminDashboard = () => {
                 key={stat.label}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl border border-border bg-card p-5 shadow-card"
+                className="rounded-2xl border border-border bg-card p-4 shadow-card sm:p-5"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">{stat.label}</span>
-                  <stat.icon className={`h-5 w-5 ${stat.color}`} />
+                  <span className="text-xs text-muted-foreground sm:text-sm">{stat.label}</span>
+                  <stat.icon className={`h-4 w-4 sm:h-5 sm:w-5 ${stat.color}`} />
                 </div>
-                <p className="mt-2 font-display text-3xl font-bold text-foreground">{stat.value}</p>
+                <p className="mt-1 font-display text-2xl font-bold text-foreground sm:mt-2 sm:text-3xl">{stat.value}</p>
               </motion.div>
             ))}
           </div>
 
-          {/* Tabs */}
           <Tabs defaultValue="pending">
-            <TabsList className="mb-6">
-              <TabsTrigger value="pending" className="gap-2">
-                <AlertTriangle className="h-4 w-4" />
+            <TabsList className="mb-4 flex-wrap sm:mb-6">
+              <TabsTrigger value="pending" className="gap-1 text-xs sm:gap-2 sm:text-sm">
+                <AlertTriangle className="h-3.5 w-3.5" />
                 Pending ({pendingTutors.length})
               </TabsTrigger>
-              <TabsTrigger value="tutors" className="gap-2">
-                <Users className="h-4 w-4" />
-                All Tutors
+              <TabsTrigger value="tutors" className="gap-1 text-xs sm:gap-2 sm:text-sm">
+                <GraduationCap className="h-3.5 w-3.5" />
+                Tutors
               </TabsTrigger>
-              <TabsTrigger value="requests" className="gap-2">
-                <MessageCircle className="h-4 w-4" />
+              <TabsTrigger value="students" className="gap-1 text-xs sm:gap-2 sm:text-sm">
+                <Users className="h-3.5 w-3.5" />
+                Students
+              </TabsTrigger>
+              <TabsTrigger value="requests" className="gap-1 text-xs sm:gap-2 sm:text-sm">
+                <MessageCircle className="h-3.5 w-3.5" />
                 Requests
               </TabsTrigger>
-              <TabsTrigger value="reports" className="gap-2">
-                <AlertTriangle className="h-4 w-4" />
+              <TabsTrigger value="reports" className="gap-1 text-xs sm:gap-2 sm:text-sm">
+                <AlertTriangle className="h-3.5 w-3.5" />
                 Reports
               </TabsTrigger>
             </TabsList>
@@ -232,51 +313,36 @@ const AdminDashboard = () => {
             <TabsContent value="pending">
               <div className="space-y-4">
                 {pendingTutors.length === 0 ? (
-                  <div className="rounded-2xl border border-border bg-card p-12 text-center shadow-card">
-                    <CheckCircle className="mx-auto h-12 w-12 text-green-500" />
-                    <p className="mt-4 font-display text-lg font-semibold text-foreground">All caught up!</p>
-                    <p className="mt-1 text-sm text-muted-foreground">No pending tutor approvals.</p>
+                  <div className="rounded-2xl border border-border bg-card p-10 text-center shadow-card sm:p-12">
+                    <CheckCircle className="mx-auto h-10 w-10 text-green-500 sm:h-12 sm:w-12" />
+                    <p className="mt-3 font-display text-base font-semibold text-foreground sm:mt-4 sm:text-lg">All caught up!</p>
+                    <p className="mt-1 text-xs text-muted-foreground sm:text-sm">No pending tutor approvals.</p>
                   </div>
                 ) : (
                   pendingTutors.map((tutor) => (
-                    <div key={tutor.id} className="rounded-2xl border border-border bg-card p-5 shadow-card">
-                      <div className="flex items-start justify-between">
-                        <div className="flex gap-4">
+                    <div key={tutor.id} className="rounded-2xl border border-border bg-card p-4 shadow-card sm:p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex gap-3 sm:gap-4">
                           {tutor.photo_url ? (
-                            <img src={tutor.photo_url} alt="" className="h-16 w-16 rounded-xl object-cover" />
+                            <img src={tutor.photo_url} alt="" className="h-12 w-12 rounded-xl object-cover sm:h-16 sm:w-16" />
                           ) : (
-                            <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-secondary">
-                              <Users className="h-6 w-6 text-muted-foreground" />
+                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-secondary sm:h-16 sm:w-16">
+                              <Users className="h-5 w-5 text-muted-foreground sm:h-6 sm:w-6" />
                             </div>
                           )}
                           <div>
-                            <h3 className="font-display font-semibold text-foreground">
-                              {tutor.profile?.full_name || "Unknown"}
-                            </h3>
-                            <p className="text-sm text-muted-foreground">
-                              {tutor.department} • {tutor.session}
-                            </p>
-                            <div className="mt-2 flex flex-wrap gap-1">
-                              {tutor.subjects.map((s) => (
-                                <Badge key={s} variant="secondary" className="text-xs">
-                                  {s}
-                                </Badge>
+                            <h3 className="font-display text-sm font-semibold text-foreground sm:text-base">{tutor.profile?.full_name || "Unknown"}</h3>
+                            <p className="text-xs text-muted-foreground">{tutor.department} • {tutor.session}</p>
+                            <div className="mt-1.5 flex flex-wrap gap-1 sm:mt-2">
+                              {tutor.subjects.slice(0, 3).map((s) => (
+                                <Badge key={s} variant="secondary" className="text-[10px] sm:text-xs">{s}</Badge>
                               ))}
                             </div>
                           </div>
                         </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedTutor(tutor);
-                              setAdminNotes("");
-                            }}
-                          >
-                            <Eye className="mr-1 h-3 w-3" /> Review
-                          </Button>
-                        </div>
+                        <Button size="sm" variant="outline" onClick={() => { setSelectedTutor(tutor); setAdminNotes(""); }} className="text-xs">
+                          <Eye className="mr-1 h-3 w-3" /> Review
+                        </Button>
                       </div>
                     </div>
                   ))
@@ -288,53 +354,94 @@ const AdminDashboard = () => {
             <TabsContent value="tutors">
               <div className="space-y-3">
                 {allTutors.map((tutor) => (
-                  <div key={tutor.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-4 shadow-card">
+                  <div key={tutor.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-3 shadow-card sm:p-4">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
-                        <Users className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary sm:h-10 sm:w-10">
+                        <GraduationCap className="h-3.5 w-3.5 text-muted-foreground sm:h-4 sm:w-4" />
                       </div>
                       <div>
-                        <span className="font-medium text-foreground">{tutor.profile?.full_name}</span>
-                        <p className="text-xs text-muted-foreground">{tutor.department} • ৳{tutor.fee_expectation}/mo</p>
+                        <span className="text-sm font-medium text-foreground">{tutor.profile?.full_name}</span>
+                        <p className="text-[10px] text-muted-foreground sm:text-xs">{tutor.department} • ৳{tutor.fee_expectation}/mo</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge className={`text-xs ${statusColor(tutor.status)}`}>{tutor.status}</Badge>
+                      <Badge className={`text-[10px] sm:text-xs ${statusColor(tutor.status)}`}>{tutor.status}</Badge>
                       {tutor.status === "approved" && (
-                        <Button size="sm" variant="outline" onClick={() => handleSuspend(tutor)}>
+                        <Button size="sm" variant="outline" onClick={() => handleSuspend(tutor)} className="text-xs">
                           <Ban className="mr-1 h-3 w-3" /> Suspend
                         </Button>
                       )}
                     </div>
                   </div>
                 ))}
-                {allTutors.length === 0 && (
-                  <p className="py-12 text-center text-muted-foreground">No tutors registered yet.</p>
-                )}
+                {allTutors.length === 0 && <p className="py-12 text-center text-muted-foreground">No tutors registered yet.</p>}
               </div>
             </TabsContent>
 
-            {/* Requests */}
+            {/* Students */}
+            <TabsContent value="students">
+              <div className="space-y-3">
+                {students.map((student) => (
+                  <div key={student.user_id} className="flex items-center justify-between rounded-xl border border-border bg-card p-3 shadow-card sm:p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary sm:h-10 sm:w-10">
+                        <Users className="h-3.5 w-3.5 text-muted-foreground sm:h-4 sm:w-4" />
+                      </div>
+                      <div>
+                        <span className="text-sm font-medium text-foreground">{student.full_name}</span>
+                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground sm:text-xs">
+                          <span>{student.request_count} requests</span>
+                          {student.favorite_tutor && (
+                            <span className="flex items-center gap-0.5">
+                              <Heart className="h-2.5 w-2.5 fill-coral text-coral" />
+                              {student.favorite_tutor}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs text-destructive hover:bg-destructive/10"
+                      onClick={() => handleDeleteStudent(student.user_id)}
+                    >
+                      <Trash2 className="mr-1 h-3 w-3" /> Remove
+                    </Button>
+                  </div>
+                ))}
+                {students.length === 0 && <p className="py-12 text-center text-muted-foreground">No students yet.</p>}
+              </div>
+            </TabsContent>
+
+            {/* Requests + Chats */}
             <TabsContent value="requests">
               <div className="space-y-3">
                 {requests.map((req) => (
-                  <div key={req.id} className="rounded-xl border border-border bg-card p-4 shadow-card">
+                  <div key={req.id} className="rounded-xl border border-border bg-card p-3 shadow-card sm:p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-foreground">
-                          {req.subject} • {req.class_level}
+                        <p className="text-xs font-medium text-foreground sm:text-sm">
+                          <span className="text-muted-foreground">Student:</span> {(req as any).student_name_resolved}
+                          <span className="mx-2 text-muted-foreground">→</span>
+                          <span className="text-muted-foreground">Tutor:</span> {(req as any).tutor_name_resolved}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          Budget: ৳{req.budget} • Area: {req.area}
+                        <p className="mt-0.5 text-[10px] text-muted-foreground sm:text-xs">
+                          {req.subject} • {req.class_level} • ৳{req.budget}
                         </p>
                       </div>
-                      <Badge className={`text-xs ${statusColor(req.status)}`}>{req.status}</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge className={`text-[10px] sm:text-xs ${statusColor(req.status)}`}>{req.status}</Badge>
+                        {req.status === "accepted" && (
+                          <Button size="sm" variant="outline" onClick={() => viewChat(req)} className="text-xs">
+                            <Eye className="mr-1 h-3 w-3" /> Chat
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
-                {requests.length === 0 && (
-                  <p className="py-12 text-center text-muted-foreground">No requests yet.</p>
-                )}
+                {requests.length === 0 && <p className="py-12 text-center text-muted-foreground">No requests yet.</p>}
               </div>
             </TabsContent>
 
@@ -342,28 +449,26 @@ const AdminDashboard = () => {
             <TabsContent value="reports">
               <div className="space-y-3">
                 {reports.map((report) => (
-                  <div key={report.id} className="rounded-xl border border-border bg-card p-4 shadow-card">
+                  <div key={report.id} className="rounded-xl border border-border bg-card p-3 shadow-card sm:p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-foreground">{report.reason}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">{report.details}</p>
+                        <p className="text-xs font-medium text-foreground sm:text-sm">{report.reason}</p>
+                        <p className="mt-1 text-[10px] text-muted-foreground sm:text-xs">{report.details}</p>
                       </div>
-                      <Badge className={`text-xs ${report.status === "open" ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
+                      <Badge className={`text-[10px] sm:text-xs ${report.status === "open" ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
                         {report.status}
                       </Badge>
                     </div>
                   </div>
                 ))}
-                {reports.length === 0 && (
-                  <p className="py-12 text-center text-muted-foreground">No reports filed.</p>
-                )}
+                {reports.length === 0 && <p className="py-12 text-center text-muted-foreground">No reports filed.</p>}
               </div>
             </TabsContent>
           </Tabs>
 
-          {/* Review Dialog */}
+          {/* Tutor Review Dialog */}
           <Dialog open={!!selectedTutor} onOpenChange={() => setSelectedTutor(null)}>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-[95vw] sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle className="font-display">Review Tutor Application</DialogTitle>
               </DialogHeader>
@@ -406,30 +511,48 @@ const AdminDashboard = () => {
                   )}
                   <div>
                     <span className="text-sm text-muted-foreground">Admin Notes</span>
-                    <Textarea
-                      className="mt-1"
-                      placeholder="Optional notes..."
-                      value={adminNotes}
-                      onChange={(e) => setAdminNotes(e.target.value)}
-                    />
+                    <Textarea className="mt-1" placeholder="Optional notes..." value={adminNotes} onChange={(e) => setAdminNotes(e.target.value)} />
                   </div>
                   <div className="flex gap-3">
-                    <Button
-                      onClick={() => handleApprove(selectedTutor)}
-                      className="flex-1 gap-2 bg-green-600 text-primary-foreground hover:bg-green-700"
-                    >
+                    <Button onClick={() => handleApprove(selectedTutor)} className="flex-1 gap-2 bg-green-600 text-primary-foreground hover:bg-green-700">
                       <CheckCircle className="h-4 w-4" /> Approve
                     </Button>
-                    <Button
-                      onClick={() => handleReject(selectedTutor)}
-                      variant="outline"
-                      className="flex-1 gap-2 text-destructive"
-                    >
+                    <Button onClick={() => handleReject(selectedTutor)} variant="outline" className="flex-1 gap-2 text-destructive">
                       <XCircle className="h-4 w-4" /> Reject
                     </Button>
                   </div>
                 </div>
               )}
+            </DialogContent>
+          </Dialog>
+
+          {/* Chat Viewer Dialog */}
+          <Dialog open={!!selectedChat} onOpenChange={() => setSelectedChat(null)}>
+            <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[80vh]">
+              <DialogHeader>
+                <DialogTitle className="font-display">Chat History</DialogTitle>
+              </DialogHeader>
+              <ScrollArea className="h-[60vh]">
+                <div className="space-y-2 p-2">
+                  {chatMessages.map((msg) => (
+                    <div key={msg.id} className="rounded-lg bg-secondary/50 p-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-foreground">{(msg as any).sender_name}</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {new Date(msg.created_at).toLocaleString()}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm text-foreground">{msg.content}</p>
+                      {msg.is_flagged && (
+                        <Badge className="mt-1 bg-red-100 text-red-700 text-[10px]">⚠️ Flagged</Badge>
+                      )}
+                    </div>
+                  ))}
+                  {chatMessages.length === 0 && (
+                    <p className="text-center text-sm text-muted-foreground py-8">No messages in this conversation.</p>
+                  )}
+                </div>
+              </ScrollArea>
             </DialogContent>
           </Dialog>
         </div>
