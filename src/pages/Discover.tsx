@@ -2,7 +2,7 @@ import { useState } from "react";
 import Navbar from "@/components/Navbar";
 import TutorCard from "@/components/TutorCard";
 import Footer from "@/components/Footer";
-import { mockTutors } from "@/data/mockTutors";
+import { useShuffledTutors } from "@/hooks/useShuffledTutors";
 import { Search, SlidersHorizontal, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -10,9 +10,9 @@ import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 
 const allSubjects = ["Physics", "Mathematics", "Chemistry", "English", "ICT", "Biology", "Bangla", "Higher Math", "Accounting", "Economics", "General Math"];
-const allAreas = ["Boyra", "Sonadanga", "Khalishpur", "Daulatpur", "KUET Campus", "Fulbarigate", "New Market", "Shibbari", "KDA Avenue", "Gollamari"];
 
 const Discover = () => {
+  const tutors = useShuffledTutors();
   const [search, setSearch] = useState("");
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
@@ -23,7 +23,7 @@ const Discover = () => {
     );
   };
 
-  const filtered = mockTutors.filter((t) => {
+  const filtered = tutors.filter((t) => {
     const matchesSearch =
       !search ||
       t.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -41,18 +41,16 @@ const Discover = () => {
     <div className="min-h-screen">
       <Navbar />
       <div className="pt-16">
-        {/* Header */}
         <div className="border-b border-border bg-card">
-          <div className="container py-8">
-            <h1 className="font-display text-3xl font-bold text-foreground">
+          <div className="container py-6 px-4 sm:py-8">
+            <h1 className="font-display text-2xl font-bold text-foreground sm:text-3xl">
               Discover <span className="text-gradient-coral">Tutors</span>
             </h1>
-            <p className="mt-2 text-muted-foreground">
+            <p className="mt-2 text-sm text-muted-foreground sm:text-base">
               Browse verified KUET tutors. No sign-in required to explore.
             </p>
 
-            {/* Search */}
-            <div className="mt-6 flex gap-3">
+            <div className="mt-4 flex gap-3 sm:mt-6">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -68,24 +66,19 @@ const Discover = () => {
                 className={showFilters ? "bg-coral-gradient text-primary-foreground" : ""}
               >
                 <SlidersHorizontal className="mr-2 h-4 w-4" />
-                Filters
+                <span className="hidden sm:inline">Filters</span>
               </Button>
             </div>
 
-            {/* Filters */}
             {showFilters && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                className="mt-4"
-              >
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="mt-4">
                 <p className="mb-2 text-sm font-medium text-foreground">Subjects</p>
                 <div className="flex flex-wrap gap-2">
                   {allSubjects.map((s) => (
                     <Badge
                       key={s}
                       variant={selectedSubjects.includes(s) ? "default" : "outline"}
-                      className={`cursor-pointer transition-colors ${
+                      className={`cursor-pointer transition-colors text-xs sm:text-sm ${
                         selectedSubjects.includes(s)
                           ? "bg-coral-gradient text-primary-foreground"
                           : "hover:bg-secondary"
@@ -97,12 +90,7 @@ const Discover = () => {
                   ))}
                 </div>
                 {selectedSubjects.length > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="mt-2 text-primary"
-                    onClick={() => setSelectedSubjects([])}
-                  >
+                  <Button variant="ghost" size="sm" className="mt-2 text-primary" onClick={() => setSelectedSubjects([])}>
                     <X className="mr-1 h-3 w-3" />
                     Clear filters
                   </Button>
@@ -112,12 +100,11 @@ const Discover = () => {
           </div>
         </div>
 
-        {/* Results */}
-        <div className="container py-10">
-          <p className="mb-6 text-sm text-muted-foreground">
+        <div className="container py-6 px-4 sm:py-10">
+          <p className="mb-4 text-sm text-muted-foreground sm:mb-6">
             {filtered.length} tutor{filtered.length !== 1 ? "s" : ""} found
           </p>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
             {filtered.map((tutor) => (
               <TutorCard key={tutor.id} {...tutor} />
             ))}

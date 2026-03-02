@@ -15,12 +15,10 @@ const Login = () => {
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
 
-  // Login state
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
 
-  // Signup state
   const [signupName, setSignupName] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
@@ -48,7 +46,12 @@ const Login = () => {
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success("Account created! Please check your email to verify.");
+      if (signupRole === "tutor") {
+        toast.success("Account created! Your profile is pending admin approval. You can sign in but won't be visible to students until approved.");
+      } else {
+        toast.success("Account created! You can now sign in.");
+      }
+      navigate("/");
     }
   };
 
@@ -103,35 +106,17 @@ const Login = () => {
                   <Label>Email</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      placeholder="you@kuet.ac.bd"
-                      className="pl-10"
-                      type="email"
-                      value={loginEmail}
-                      onChange={(e) => setLoginEmail(e.target.value)}
-                      required
-                    />
+                    <Input placeholder="you@kuet.ac.bd" className="pl-10" type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} required />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      type="password"
-                      placeholder="••••••••"
-                      className="pl-10"
-                      value={loginPassword}
-                      onChange={(e) => setLoginPassword(e.target.value)}
-                      required
-                    />
+                    <Input type="password" placeholder="••••••••" className="pl-10" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} required />
                   </div>
                 </div>
-                <Button
-                  type="submit"
-                  disabled={loginLoading}
-                  className="w-full gap-2 bg-coral-gradient text-primary-foreground hover:opacity-90"
-                >
+                <Button type="submit" disabled={loginLoading} className="w-full gap-2 bg-coral-gradient text-primary-foreground hover:opacity-90">
                   {loginLoading ? "Signing in..." : "Sign In"}
                   <ArrowRight className="h-4 w-4" />
                 </Button>
@@ -148,51 +133,26 @@ const Login = () => {
                   <Label>Full Name</Label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      placeholder="Your full name"
-                      className="pl-10"
-                      value={signupName}
-                      onChange={(e) => setSignupName(e.target.value)}
-                      required
-                    />
+                    <Input placeholder="Your full name" className="pl-10" value={signupName} onChange={(e) => setSignupName(e.target.value)} required />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Email</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      placeholder="you@kuet.ac.bd"
-                      className="pl-10"
-                      type="email"
-                      value={signupEmail}
-                      onChange={(e) => setSignupEmail(e.target.value)}
-                      required
-                    />
+                    <Input placeholder="you@kuet.ac.bd" className="pl-10" type="email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} required />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      type="password"
-                      placeholder="Min 6 characters"
-                      className="pl-10"
-                      value={signupPassword}
-                      onChange={(e) => setSignupPassword(e.target.value)}
-                      required
-                      minLength={6}
-                    />
+                    <Input type="password" placeholder="Min 6 characters" className="pl-10" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} required minLength={6} />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label>I am a</Label>
-                  <RadioGroup
-                    value={signupRole}
-                    onValueChange={(v) => setSignupRole(v as AppRole)}
-                    className="flex gap-4"
-                  >
+                  <RadioGroup value={signupRole} onValueChange={(v) => setSignupRole(v as AppRole)} className="flex gap-4">
                     <div className="flex items-center gap-2">
                       <RadioGroupItem value="student" id="student" />
                       <Label htmlFor="student" className="cursor-pointer">Student / Guardian</Label>
@@ -202,12 +162,13 @@ const Login = () => {
                       <Label htmlFor="tutor" className="cursor-pointer">KUET Tutor</Label>
                     </div>
                   </RadioGroup>
+                  {signupRole === "tutor" && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      ⚠️ Tutor accounts require admin approval before becoming visible to students.
+                    </p>
+                  )}
                 </div>
-                <Button
-                  type="submit"
-                  disabled={signupLoading}
-                  className="w-full gap-2 bg-coral-gradient text-primary-foreground hover:opacity-90"
-                >
+                <Button type="submit" disabled={signupLoading} className="w-full gap-2 bg-coral-gradient text-primary-foreground hover:opacity-90">
                   {signupLoading ? "Creating..." : "Create Account"}
                   <ArrowRight className="h-4 w-4" />
                 </Button>

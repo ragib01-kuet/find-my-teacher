@@ -1,14 +1,28 @@
-import { Link, useLocation } from "react-router-dom";
-import { GraduationCap, Search, LogIn, Menu, X, MessageCircle, Shield, LogOut, User } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { GraduationCap, Search, LogIn, Menu, X, MessageCircle, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, role, signOut } = useAuth();
+
+  // Secret admin access: 5 clicks within 3 seconds
+  const clickTimesRef = useRef<number[]>([]);
+  const handleTitleClick = useCallback(() => {
+    const now = Date.now();
+    clickTimesRef.current.push(now);
+    // Keep only clicks within last 3 seconds
+    clickTimesRef.current = clickTimesRef.current.filter(t => now - t < 3000);
+    if (clickTimesRef.current.length >= 5) {
+      clickTimesRef.current = [];
+      navigate("/admin");
+    }
+  }, [navigate]);
 
   const links = [
     { to: "/", label: "Home" },
@@ -19,21 +33,21 @@ const Navbar = () => {
   if (user) {
     links.push({ to: "/messages", label: "Messages" });
   }
-  if (role === "admin") {
-    links.push({ to: "/admin", label: "Admin" });
-  }
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
       <div className="container flex h-16 items-center justify-between">
-        <Link to="/" className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-coral-gradient">
+        <div className="flex items-center gap-2.5">
+          <Link to="/" className="flex h-9 w-9 items-center justify-center rounded-lg bg-coral-gradient">
             <GraduationCap className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <span className="font-display text-lg font-bold tracking-tight text-foreground">
+          </Link>
+          <button
+            onClick={handleTitleClick}
+            className="font-display text-lg font-bold tracking-tight text-foreground select-none"
+          >
             KUET <span className="text-gradient-coral">Tuition</span>
-          </span>
-        </Link>
+          </button>
+        </div>
 
         <div className="hidden items-center gap-1 md:flex">
           {links.map((link) => (
