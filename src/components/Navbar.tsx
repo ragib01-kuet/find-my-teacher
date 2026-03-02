@@ -1,18 +1,27 @@
 import { Link, useLocation } from "react-router-dom";
-import { GraduationCap, Search, LogIn, Menu, X } from "lucide-react";
+import { GraduationCap, Search, LogIn, Menu, X, MessageCircle, Shield, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/hooks/useAuth";
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  const { user, role, signOut } = useAuth();
 
   const links = [
     { to: "/", label: "Home" },
     { to: "/discover", label: "Find Tutors" },
     { to: "/how-it-works", label: "How It Works" },
   ];
+
+  if (user) {
+    links.push({ to: "/messages", label: "Messages" });
+  }
+  if (role === "admin") {
+    links.push({ to: "/admin", label: "Admin" });
+  }
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
@@ -26,7 +35,6 @@ const Navbar = () => {
           </span>
         </Link>
 
-        {/* Desktop Nav */}
         <div className="hidden items-center gap-1 md:flex">
           {links.map((link) => (
             <Link
@@ -44,21 +52,41 @@ const Navbar = () => {
         </div>
 
         <div className="hidden items-center gap-3 md:flex">
-          <Link to="/discover">
-            <Button variant="ghost" size="sm" className="gap-2">
-              <Search className="h-4 w-4" />
-              Search
-            </Button>
-          </Link>
-          <Link to="/login">
-            <Button size="sm" className="gap-2 bg-coral-gradient text-primary-foreground hover:opacity-90">
-              <LogIn className="h-4 w-4" />
-              Sign In
-            </Button>
-          </Link>
+          {user ? (
+            <>
+              <Link to="/messages">
+                <Button variant="ghost" size="sm" className="gap-2">
+                  <MessageCircle className="h-4 w-4" />
+                </Button>
+              </Link>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={signOut}
+                className="gap-2 text-muted-foreground"
+              >
+                <LogOut className="h-4 w-4" />
+                Sign Out
+              </Button>
+            </>
+          ) : (
+            <>
+              <Link to="/discover">
+                <Button variant="ghost" size="sm" className="gap-2">
+                  <Search className="h-4 w-4" />
+                  Search
+                </Button>
+              </Link>
+              <Link to="/login">
+                <Button size="sm" className="gap-2 bg-coral-gradient text-primary-foreground hover:opacity-90">
+                  <LogIn className="h-4 w-4" />
+                  Sign In
+                </Button>
+              </Link>
+            </>
+          )}
         </div>
 
-        {/* Mobile Toggle */}
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
           className="rounded-lg p-2 text-foreground md:hidden"
@@ -67,7 +95,6 @@ const Navbar = () => {
         </button>
       </div>
 
-      {/* Mobile Menu */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
@@ -87,11 +114,19 @@ const Navbar = () => {
                   {link.label}
                 </Link>
               ))}
-              <Link to="/login" onClick={() => setMobileOpen(false)}>
-                <Button className="mt-2 w-full bg-coral-gradient text-primary-foreground">
-                  Sign In
+              {user ? (
+                <Button
+                  variant="outline"
+                  onClick={() => { signOut(); setMobileOpen(false); }}
+                  className="mt-2"
+                >
+                  Sign Out
                 </Button>
-              </Link>
+              ) : (
+                <Link to="/login" onClick={() => setMobileOpen(false)}>
+                  <Button className="mt-2 w-full bg-coral-gradient text-primary-foreground">Sign In</Button>
+                </Link>
+              )}
             </div>
           </motion.div>
         )}

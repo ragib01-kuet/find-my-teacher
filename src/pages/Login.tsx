@@ -4,11 +4,53 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Link } from "react-router-dom";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
+import { AppRole } from "@/types/database";
 
 const Login = () => {
-  const [isLogin, setIsLogin] = useState(true);
+  const { signIn, signUp } = useAuth();
+  const navigate = useNavigate();
+
+  // Login state
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
+
+  // Signup state
+  const [signupName, setSignupName] = useState("");
+  const [signupEmail, setSignupEmail] = useState("");
+  const [signupPassword, setSignupPassword] = useState("");
+  const [signupRole, setSignupRole] = useState<AppRole>("student");
+  const [signupLoading, setSignupLoading] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginLoading(true);
+    const { error } = await signIn(loginEmail, loginPassword);
+    setLoginLoading(false);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("Welcome back!");
+      navigate("/");
+    }
+  };
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSignupLoading(true);
+    const { error } = await signUp(signupEmail, signupPassword, signupName, signupRole);
+    setSignupLoading(false);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("Account created! Please check your email to verify.");
+    }
+  };
 
   return (
     <div className="flex min-h-screen">
@@ -56,23 +98,41 @@ const Login = () => {
                 <h2 className="font-display text-2xl font-bold text-foreground">Welcome back</h2>
                 <p className="text-sm text-muted-foreground">Sign in to your account</p>
               </div>
-              <form className="mt-6 space-y-4" onSubmit={(e) => e.preventDefault()}>
+              <form className="mt-6 space-y-4" onSubmit={handleLogin}>
                 <div className="space-y-2">
                   <Label>Email</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input placeholder="you@kuet.ac.bd" className="pl-10" />
+                    <Input
+                      placeholder="you@kuet.ac.bd"
+                      className="pl-10"
+                      type="email"
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
+                      required
+                    />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input type="password" placeholder="••••••••" className="pl-10" />
+                    <Input
+                      type="password"
+                      placeholder="••••••••"
+                      className="pl-10"
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      required
+                    />
                   </div>
                 </div>
-                <Button className="w-full gap-2 bg-coral-gradient text-primary-foreground hover:opacity-90">
-                  Sign In
+                <Button
+                  type="submit"
+                  disabled={loginLoading}
+                  className="w-full gap-2 bg-coral-gradient text-primary-foreground hover:opacity-90"
+                >
+                  {loginLoading ? "Signing in..." : "Sign In"}
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </form>
@@ -83,30 +143,72 @@ const Login = () => {
                 <h2 className="font-display text-2xl font-bold text-foreground">Create account</h2>
                 <p className="text-sm text-muted-foreground">Join as a tutor or student</p>
               </div>
-              <form className="mt-6 space-y-4" onSubmit={(e) => e.preventDefault()}>
+              <form className="mt-6 space-y-4" onSubmit={handleSignup}>
                 <div className="space-y-2">
                   <Label>Full Name</Label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input placeholder="Your full name" className="pl-10" />
+                    <Input
+                      placeholder="Your full name"
+                      className="pl-10"
+                      value={signupName}
+                      onChange={(e) => setSignupName(e.target.value)}
+                      required
+                    />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>KUET Email</Label>
+                  <Label>Email</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input placeholder="you@kuet.ac.bd" className="pl-10" />
+                    <Input
+                      placeholder="you@kuet.ac.bd"
+                      className="pl-10"
+                      type="email"
+                      value={signupEmail}
+                      onChange={(e) => setSignupEmail(e.target.value)}
+                      required
+                    />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input type="password" placeholder="••••••••" className="pl-10" />
+                    <Input
+                      type="password"
+                      placeholder="Min 6 characters"
+                      className="pl-10"
+                      value={signupPassword}
+                      onChange={(e) => setSignupPassword(e.target.value)}
+                      required
+                      minLength={6}
+                    />
                   </div>
                 </div>
-                <Button className="w-full gap-2 bg-coral-gradient text-primary-foreground hover:opacity-90">
-                  Create Account
+                <div className="space-y-2">
+                  <Label>I am a</Label>
+                  <RadioGroup
+                    value={signupRole}
+                    onValueChange={(v) => setSignupRole(v as AppRole)}
+                    className="flex gap-4"
+                  >
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="student" id="student" />
+                      <Label htmlFor="student" className="cursor-pointer">Student / Guardian</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="tutor" id="tutor" />
+                      <Label htmlFor="tutor" className="cursor-pointer">KUET Tutor</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+                <Button
+                  type="submit"
+                  disabled={signupLoading}
+                  className="w-full gap-2 bg-coral-gradient text-primary-foreground hover:opacity-90"
+                >
+                  {signupLoading ? "Creating..." : "Create Account"}
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </form>
