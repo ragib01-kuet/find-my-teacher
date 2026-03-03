@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { GraduationCap, Mail, Lock, ArrowRight, User } from "lucide-react";
+import { GraduationCap, Mail, Lock, ArrowRight, User, Phone, Building, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,8 +22,13 @@ const Login = () => {
   const [signupName, setSignupName] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
+  const [signupPhone, setSignupPhone] = useState("");
   const [signupRole, setSignupRole] = useState<AppRole>("student");
+  const [signupDepartment, setSignupDepartment] = useState("");
+  const [signupBatch, setSignupBatch] = useState("");
   const [signupLoading, setSignupLoading] = useState(false);
+
+  const isKuetEmail = signupEmail.endsWith("@stud.kuet.ac.bd");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,14 +45,26 @@ const Login = () => {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (signupRole === "tutor" && (!signupDepartment || !signupBatch)) {
+      toast.error("Please fill in department and batch.");
+      return;
+    }
     setSignupLoading(true);
-    const { error } = await signUp(signupEmail, signupPassword, signupName, signupRole);
+    const { error } = await signUp(signupEmail, signupPassword, signupName, signupRole, {
+      phone: signupPhone,
+      department: signupDepartment,
+      batch: signupBatch,
+    });
     setSignupLoading(false);
     if (error) {
       toast.error(error.message);
     } else {
       if (signupRole === "tutor") {
-        toast.success("Account created! Your profile is pending admin approval. You can sign in but won't be visible to students until approved.");
+        if (isKuetEmail) {
+          toast.success("Account created & auto-approved! You have a KUET email. You can now sign in.");
+        } else {
+          toast.success("Account created! Your profile is pending admin approval.");
+        }
       } else {
         toast.success("Account created! You can now sign in.");
       }
@@ -140,14 +157,24 @@ const Login = () => {
                   <Label>Email</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input placeholder="you@kuet.ac.bd" className="pl-10" type="email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} required />
+                    <Input placeholder="you@stud.kuet.ac.bd" className="pl-10" type="email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} required />
                   </div>
+                  {signupRole === "tutor" && isKuetEmail && (
+                    <p className="text-xs text-green-600 mt-1">✅ KUET email detected — you'll be auto-approved!</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input type="password" placeholder="Min 6 characters" className="pl-10" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} required minLength={6} />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Contact Number</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input placeholder="01XXXXXXXXX" className="pl-10" value={signupPhone} onChange={(e) => setSignupPhone(e.target.value)} />
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -162,12 +189,35 @@ const Login = () => {
                       <Label htmlFor="tutor" className="cursor-pointer">KUET Tutor</Label>
                     </div>
                   </RadioGroup>
-                  {signupRole === "tutor" && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      ⚠️ Tutor accounts require admin approval before becoming visible to students.
-                    </p>
-                  )}
                 </div>
+
+                {signupRole === "tutor" && (
+                  <div className="space-y-3 rounded-xl border border-border bg-secondary/30 p-3">
+                    <p className="text-xs font-medium text-foreground">Tutor Details</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Department</Label>
+                        <div className="relative">
+                          <Building className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                          <Input placeholder="e.g., CSE" className="pl-9 text-sm" value={signupDepartment} onChange={(e) => setSignupDepartment(e.target.value)} required />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Batch/Session</Label>
+                        <div className="relative">
+                          <Calendar className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                          <Input placeholder="e.g., 2020-21" className="pl-9 text-sm" value={signupBatch} onChange={(e) => setSignupBatch(e.target.value)} required />
+                        </div>
+                      </div>
+                    </div>
+                    {!isKuetEmail && (
+                      <p className="text-xs text-muted-foreground">
+                        ⚠️ Non-KUET emails require admin approval before your profile becomes visible.
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 <Button type="submit" disabled={signupLoading} className="w-full gap-2 bg-coral-gradient text-primary-foreground hover:opacity-90">
                   {signupLoading ? "Creating..." : "Create Account"}
                   <ArrowRight className="h-4 w-4" />

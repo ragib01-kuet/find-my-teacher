@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { TutorProfile, Profile, TuitionRequest, Deal, Report, Message as MessageType } from "@/types/database";
+import { TutorProfile, Profile, TuitionRequest, Report, Message as MessageType } from "@/types/database";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,18 +15,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Shield,
-  Users,
-  CheckCircle,
-  XCircle,
-  Eye,
-  AlertTriangle,
-  MessageCircle,
-  Ban,
-  FileText,
-  Trash2,
-  GraduationCap,
-  Heart,
+  Shield, Users, CheckCircle, XCircle, Eye, AlertTriangle,
+  MessageCircle, Ban, FileText, Trash2, GraduationCap, Heart, Zap, Phone,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -44,7 +34,7 @@ interface StudentInfo {
 const AdminDashboard = () => {
   const { user, role, loading: authLoading } = useAuth();
   const [pendingTutors, setPendingTutors] = useState<(TutorProfile & { profile?: Profile })[]>([]);
-  const [allTutors, setAllTutors] = useState<(TutorProfile & { profile?: Profile })[]>([]);
+  const [allTutors, setAllTutors] = useState<(TutorProfile & { profile?: Profile; email?: string })[]>([]);
   const [students, setStudents] = useState<StudentInfo[]>([]);
   const [requests, setRequests] = useState<(TuitionRequest & { student_name_resolved?: string; tutor_name_resolved?: string })[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
@@ -60,11 +50,7 @@ const AdminDashboard = () => {
     const fetchAll = async () => {
       // Pending tutors
       const { data: pending } = await supabase
-        .from("tutor_profiles")
-        .select("*")
-        .eq("status", "pending")
-        .order("created_at", { ascending: false });
-
+        .from("tutor_profiles").select("*").eq("status", "pending").order("created_at", { ascending: false });
       if (pending) {
         const enriched = await Promise.all(
           (pending as TutorProfile[]).map(async (t) => {
@@ -94,8 +80,6 @@ const AdminDashboard = () => {
           studentRoles.map(async (sr) => {
             const { data: profile } = await supabase.from("profiles").select("*").eq("user_id", sr.user_id).single();
             const { count } = await supabase.from("tuition_requests").select("*", { count: "exact", head: true }).eq("student_id", sr.user_id);
-            
-            // Find favorite tutor
             const { data: reqs } = await supabase.from("tuition_requests").select("tutor_id").eq("student_id", sr.user_id);
             let favTutor = "";
             if (reqs && reqs.length > 0) {
@@ -107,21 +91,17 @@ const AdminDashboard = () => {
                 favTutor = tp?.full_name || "";
               }
             }
-
             return {
-              user_id: sr.user_id,
-              full_name: profile?.full_name || "Unknown",
-              phone: profile?.phone || null,
-              created_at: profile?.created_at || "",
-              request_count: count || 0,
-              favorite_tutor: favTutor,
+              user_id: sr.user_id, full_name: profile?.full_name || "Unknown",
+              phone: profile?.phone || null, created_at: profile?.created_at || "",
+              request_count: count || 0, favorite_tutor: favTutor,
             } as StudentInfo;
           })
         );
         setStudents(studentInfos);
       }
 
-      // Requests with names
+      // Requests
       const { data: reqs } = await supabase.from("tuition_requests").select("*").order("created_at", { ascending: false });
       if (reqs) {
         const enrichedReqs = await Promise.all(
@@ -143,25 +123,14 @@ const AdminDashboard = () => {
       const { count: studentCount } = await supabase.from("user_roles").select("*", { count: "exact", head: true }).eq("role", "student");
       const { count: reqCount } = await supabase.from("tuition_requests").select("*", { count: "exact", head: true });
       const { count: dealCount } = await supabase.from("deals").select("*", { count: "exact", head: true });
-
-      setStats({
-        tutors: tutorCount || 0,
-        students: studentCount || 0,
-        requests: reqCount || 0,
-        deals: dealCount || 0,
-      });
+      setStats({ tutors: tutorCount || 0, students: studentCount || 0, requests: reqCount || 0, deals: dealCount || 0 });
     };
-
     fetchAll();
   }, [role]);
 
   const viewChat = async (req: TuitionRequest) => {
     setSelectedChat(req);
-    const { data } = await supabase
-      .from("messages")
-      .select("*")
-      .eq("request_id", req.id)
-      .order("created_at", { ascending: true });
+    const { data } = await supabase.from("messages").select("*").eq("request_id", req.id).order("created_at", { ascending: true });
     if (data) {
       const enriched = await Promise.all(
         (data as MessageType[]).map(async (m) => {
@@ -174,59 +143,42 @@ const AdminDashboard = () => {
   };
 
   const handleApprove = async (tutor: TutorProfile) => {
-    const { error } = await supabase
-      .from("tutor_profiles")
-      .update({ status: "approved", admin_notes: adminNotes || null } as any)
-      .eq("id", tutor.id);
-    if (error) {
-      toast.error("Failed: " + error.message);
-    } else {
-      toast.success("Tutor approved!");
-      setPendingTutors((prev) => prev.filter((t) => t.id !== tutor.id));
-      setSelectedTutor(null);
-      setAdminNotes("");
-    }
+    const { error } = await supabase.from("tutor_profiles").update({ status: "approved", admin_notes: adminNotes || null } as any).eq("id", tutor.id);
+    if (error) { toast.error("Failed: " + error.message); }
+    else { toast.success("Tutor approved!"); setPendingTutors((p) => p.filter((t) => t.id !== tutor.id)); setSelectedTutor(null); setAdminNotes(""); }
   };
 
   const handleReject = async (tutor: TutorProfile) => {
-    const { error } = await supabase
-      .from("tutor_profiles")
-      .update({ status: "rejected", admin_notes: adminNotes || null } as any)
-      .eq("id", tutor.id);
-    if (error) {
-      toast.error("Failed: " + error.message);
-    } else {
-      toast.success("Tutor rejected");
-      setPendingTutors((prev) => prev.filter((t) => t.id !== tutor.id));
-      setSelectedTutor(null);
-      setAdminNotes("");
-    }
+    const { error } = await supabase.from("tutor_profiles").update({ status: "rejected", admin_notes: adminNotes || null } as any).eq("id", tutor.id);
+    if (error) { toast.error("Failed: " + error.message); }
+    else { toast.success("Tutor rejected"); setPendingTutors((p) => p.filter((t) => t.id !== tutor.id)); setSelectedTutor(null); setAdminNotes(""); }
   };
 
   const handleSuspend = async (tutor: TutorProfile) => {
-    const { error } = await supabase
-      .from("tutor_profiles")
-      .update({ status: "suspended" } as any)
-      .eq("id", tutor.id);
-    if (!error) {
-      toast.success("Tutor suspended");
-      setAllTutors((prev) => prev.map((t) => (t.id === tutor.id ? { ...t, status: "suspended" as const } : t)));
-    }
+    const { error } = await supabase.from("tutor_profiles").update({ status: "suspended" } as any).eq("id", tutor.id);
+    if (!error) { toast.success("Tutor suspended"); setAllTutors((p) => p.map((t) => (t.id === tutor.id ? { ...t, status: "suspended" as const } : t))); }
   };
 
   const handleDeleteStudent = async (userId: string) => {
-    // Remove their requests and profile data
     await supabase.from("tuition_requests").delete().eq("student_id", userId);
     await supabase.from("profiles").delete().eq("user_id", userId);
     await supabase.from("user_roles").delete().eq("user_id", userId);
-    setStudents((prev) => prev.filter((s) => s.user_id !== userId));
-    toast.success("Student removed from platform");
+    setStudents((p) => p.filter((s) => s.user_id !== userId));
+    toast.success("Student removed");
+  };
+
+  const handleDeleteTutor = async (tutor: TutorProfile) => {
+    await supabase.from("tutor_profiles").delete().eq("id", tutor.id);
+    await supabase.from("tuition_requests").delete().eq("tutor_id", tutor.user_id);
+    await supabase.from("profiles").delete().eq("user_id", tutor.user_id);
+    await supabase.from("user_roles").delete().eq("user_id", tutor.user_id);
+    setAllTutors((p) => p.filter((t) => t.id !== tutor.id));
+    toast.success("Tutor removed");
   };
 
   if (authLoading) {
     return (
-      <div className="min-h-screen">
-        <Navbar />
+      <div className="min-h-screen"><Navbar />
         <div className="flex min-h-[60vh] items-center justify-center pt-16">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
         </div>
@@ -245,6 +197,11 @@ const AdminDashboard = () => {
       case "suspended": return "bg-orange-100 text-orange-700";
       default: return "bg-secondary text-secondary-foreground";
     }
+  };
+
+  const isAutoApproved = (t: TutorProfile) => {
+    // Tutors created with approved status from the start (auto-approved via KUET email)
+    return t.status === "approved" && t.admin_notes === null && t.created_at === t.updated_at;
   };
 
   return (
@@ -270,12 +227,8 @@ const AdminDashboard = () => {
               { label: "Requests", value: stats.requests, icon: MessageCircle, color: "text-gold" },
               { label: "Deals", value: stats.deals, icon: CheckCircle, color: "text-green-500" },
             ].map((stat) => (
-              <motion.div
-                key={stat.label}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl border border-border bg-card p-4 shadow-card sm:p-5"
-              >
+              <motion.div key={stat.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                className="rounded-2xl border border-border bg-card p-4 shadow-card sm:p-5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground sm:text-sm">{stat.label}</span>
                   <stat.icon className={`h-4 w-4 sm:h-5 sm:w-5 ${stat.color}`} />
@@ -288,24 +241,19 @@ const AdminDashboard = () => {
           <Tabs defaultValue="pending">
             <TabsList className="mb-4 flex-wrap sm:mb-6">
               <TabsTrigger value="pending" className="gap-1 text-xs sm:gap-2 sm:text-sm">
-                <AlertTriangle className="h-3.5 w-3.5" />
-                Pending ({pendingTutors.length})
+                <AlertTriangle className="h-3.5 w-3.5" /> Pending ({pendingTutors.length})
               </TabsTrigger>
               <TabsTrigger value="tutors" className="gap-1 text-xs sm:gap-2 sm:text-sm">
-                <GraduationCap className="h-3.5 w-3.5" />
-                Tutors
+                <GraduationCap className="h-3.5 w-3.5" /> Tutors
               </TabsTrigger>
               <TabsTrigger value="students" className="gap-1 text-xs sm:gap-2 sm:text-sm">
-                <Users className="h-3.5 w-3.5" />
-                Students
+                <Users className="h-3.5 w-3.5" /> Students
               </TabsTrigger>
               <TabsTrigger value="requests" className="gap-1 text-xs sm:gap-2 sm:text-sm">
-                <MessageCircle className="h-3.5 w-3.5" />
-                Requests
+                <MessageCircle className="h-3.5 w-3.5" /> Requests
               </TabsTrigger>
               <TabsTrigger value="reports" className="gap-1 text-xs sm:gap-2 sm:text-sm">
-                <AlertTriangle className="h-3.5 w-3.5" />
-                Reports
+                <AlertTriangle className="h-3.5 w-3.5" /> Reports
               </TabsTrigger>
             </TabsList>
 
@@ -313,29 +261,34 @@ const AdminDashboard = () => {
             <TabsContent value="pending">
               <div className="space-y-4">
                 {pendingTutors.length === 0 ? (
-                  <div className="rounded-2xl border border-border bg-card p-10 text-center shadow-card sm:p-12">
-                    <CheckCircle className="mx-auto h-10 w-10 text-green-500 sm:h-12 sm:w-12" />
-                    <p className="mt-3 font-display text-base font-semibold text-foreground sm:mt-4 sm:text-lg">All caught up!</p>
-                    <p className="mt-1 text-xs text-muted-foreground sm:text-sm">No pending tutor approvals.</p>
+                  <div className="rounded-2xl border border-border bg-card p-10 text-center shadow-card">
+                    <CheckCircle className="mx-auto h-10 w-10 text-green-500" />
+                    <p className="mt-3 font-display text-base font-semibold text-foreground">All caught up!</p>
+                    <p className="mt-1 text-xs text-muted-foreground">No pending tutor approvals.</p>
                   </div>
                 ) : (
                   pendingTutors.map((tutor) => (
-                    <div key={tutor.id} className="rounded-2xl border border-border bg-card p-4 shadow-card sm:p-5">
+                    <div key={tutor.id} className="rounded-2xl border border-border bg-card p-4 shadow-card">
                       <div className="flex items-start justify-between gap-3">
-                        <div className="flex gap-3 sm:gap-4">
+                        <div className="flex gap-3">
                           {tutor.photo_url ? (
-                            <img src={tutor.photo_url} alt="" className="h-12 w-12 rounded-xl object-cover sm:h-16 sm:w-16" />
+                            <img src={tutor.photo_url} alt="" className="h-12 w-12 rounded-xl object-cover" />
                           ) : (
-                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-secondary sm:h-16 sm:w-16">
-                              <Users className="h-5 w-5 text-muted-foreground sm:h-6 sm:w-6" />
+                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-secondary">
+                              <Users className="h-5 w-5 text-muted-foreground" />
                             </div>
                           )}
                           <div>
-                            <h3 className="font-display text-sm font-semibold text-foreground sm:text-base">{tutor.profile?.full_name || "Unknown"}</h3>
+                            <h3 className="font-display text-sm font-semibold text-foreground">{tutor.profile?.full_name || "Unknown"}</h3>
                             <p className="text-xs text-muted-foreground">{tutor.department} • {tutor.session}</p>
-                            <div className="mt-1.5 flex flex-wrap gap-1 sm:mt-2">
+                            {tutor.profile?.phone && (
+                              <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                                <Phone className="h-2.5 w-2.5" /> {tutor.profile.phone}
+                              </p>
+                            )}
+                            <div className="mt-1.5 flex flex-wrap gap-1">
                               {tutor.subjects.slice(0, 3).map((s) => (
-                                <Badge key={s} variant="secondary" className="text-[10px] sm:text-xs">{s}</Badge>
+                                <Badge key={s} variant="secondary" className="text-[10px]">{s}</Badge>
                               ))}
                             </div>
                           </div>
@@ -360,8 +313,18 @@ const AdminDashboard = () => {
                         <GraduationCap className="h-3.5 w-3.5 text-muted-foreground sm:h-4 sm:w-4" />
                       </div>
                       <div>
-                        <span className="text-sm font-medium text-foreground">{tutor.profile?.full_name}</span>
-                        <p className="text-[10px] text-muted-foreground sm:text-xs">{tutor.department} • ৳{tutor.fee_expectation}/mo</p>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-foreground">{tutor.profile?.full_name}</span>
+                          {isAutoApproved(tutor) && (
+                            <Badge className="bg-blue-100 text-blue-700 text-[9px] gap-0.5 px-1.5 py-0">
+                              <Zap className="h-2.5 w-2.5" /> Auto
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground sm:text-xs">
+                          {tutor.department} • {tutor.session}
+                          {tutor.profile?.phone && ` • ${tutor.profile.phone}`}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -371,6 +334,9 @@ const AdminDashboard = () => {
                           <Ban className="mr-1 h-3 w-3" /> Suspend
                         </Button>
                       )}
+                      <Button size="sm" variant="outline" className="text-xs text-destructive hover:bg-destructive/10" onClick={() => handleDeleteTutor(tutor)}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -391,21 +357,16 @@ const AdminDashboard = () => {
                         <span className="text-sm font-medium text-foreground">{student.full_name}</span>
                         <div className="flex items-center gap-2 text-[10px] text-muted-foreground sm:text-xs">
                           <span>{student.request_count} requests</span>
+                          {student.phone && (
+                            <span className="flex items-center gap-0.5"><Phone className="h-2.5 w-2.5" />{student.phone}</span>
+                          )}
                           {student.favorite_tutor && (
-                            <span className="flex items-center gap-0.5">
-                              <Heart className="h-2.5 w-2.5 fill-coral text-coral" />
-                              {student.favorite_tutor}
-                            </span>
+                            <span className="flex items-center gap-0.5"><Heart className="h-2.5 w-2.5 fill-coral text-coral" />{student.favorite_tutor}</span>
                           )}
                         </div>
                       </div>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-xs text-destructive hover:bg-destructive/10"
-                      onClick={() => handleDeleteStudent(student.user_id)}
-                    >
+                    <Button size="sm" variant="outline" className="text-xs text-destructive hover:bg-destructive/10" onClick={() => handleDeleteStudent(student.user_id)}>
                       <Trash2 className="mr-1 h-3 w-3" /> Remove
                     </Button>
                   </div>
@@ -475,29 +436,18 @@ const AdminDashboard = () => {
               {selectedTutor && (
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Name:</span>
-                      <p className="font-medium text-foreground">{selectedTutor.profile?.full_name}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Department:</span>
-                      <p className="font-medium text-foreground">{selectedTutor.department}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Session:</span>
-                      <p className="font-medium text-foreground">{selectedTutor.session}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Fee:</span>
-                      <p className="font-medium text-foreground">৳{selectedTutor.fee_expectation}/mo</p>
-                    </div>
+                    <div><span className="text-muted-foreground">Name:</span><p className="font-medium text-foreground">{selectedTutor.profile?.full_name}</p></div>
+                    <div><span className="text-muted-foreground">Department:</span><p className="font-medium text-foreground">{selectedTutor.department}</p></div>
+                    <div><span className="text-muted-foreground">Session:</span><p className="font-medium text-foreground">{selectedTutor.session}</p></div>
+                    <div><span className="text-muted-foreground">Fee:</span><p className="font-medium text-foreground">৳{selectedTutor.fee_expectation}/mo</p></div>
+                    {selectedTutor.profile?.phone && (
+                      <div><span className="text-muted-foreground">Phone:</span><p className="font-medium text-foreground">{selectedTutor.profile.phone}</p></div>
+                    )}
                   </div>
                   <div>
                     <span className="text-sm text-muted-foreground">Subjects:</span>
                     <div className="mt-1 flex flex-wrap gap-1">
-                      {selectedTutor.subjects.map((s) => (
-                        <Badge key={s} variant="secondary" className="text-xs">{s}</Badge>
-                      ))}
+                      {selectedTutor.subjects.map((s) => (<Badge key={s} variant="secondary" className="text-xs">{s}</Badge>))}
                     </div>
                   </div>
                   <div>
@@ -538,19 +488,13 @@ const AdminDashboard = () => {
                     <div key={msg.id} className="rounded-lg bg-secondary/50 p-3">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-semibold text-foreground">{(msg as any).sender_name}</span>
-                        <span className="text-[10px] text-muted-foreground">
-                          {new Date(msg.created_at).toLocaleString()}
-                        </span>
+                        <span className="text-[10px] text-muted-foreground">{new Date(msg.created_at).toLocaleString()}</span>
                       </div>
                       <p className="mt-1 text-sm text-foreground">{msg.content}</p>
-                      {msg.is_flagged && (
-                        <Badge className="mt-1 bg-red-100 text-red-700 text-[10px]">⚠️ Flagged</Badge>
-                      )}
+                      {msg.is_flagged && (<Badge className="mt-1 bg-red-100 text-red-700 text-[10px]">⚠️ Flagged</Badge>)}
                     </div>
                   ))}
-                  {chatMessages.length === 0 && (
-                    <p className="text-center text-sm text-muted-foreground py-8">No messages in this conversation.</p>
-                  )}
+                  {chatMessages.length === 0 && (<p className="text-center text-sm text-muted-foreground py-8">No messages in this conversation.</p>)}
                 </div>
               </ScrollArea>
             </DialogContent>
