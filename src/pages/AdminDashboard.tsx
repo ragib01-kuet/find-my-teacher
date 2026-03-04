@@ -5,6 +5,8 @@ import { TutorProfile, Profile, TuitionRequest, Report, Message as MessageType }
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,10 +19,11 @@ import {
 import {
   Shield, Users, CheckCircle, XCircle, Eye, AlertTriangle,
   MessageCircle, Ban, FileText, Trash2, GraduationCap, Heart, Zap, Phone,
+  Lock, Mail, ArrowRight,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { Navigate } from "react-router-dom";
+
 
 interface StudentInfo {
   user_id: string;
@@ -32,7 +35,7 @@ interface StudentInfo {
 }
 
 const AdminDashboard = () => {
-  const { user, role, loading: authLoading } = useAuth();
+  const { user, role, loading: authLoading, signIn } = useAuth();
   const [pendingTutors, setPendingTutors] = useState<(TutorProfile & { profile?: Profile })[]>([]);
   const [allTutors, setAllTutors] = useState<(TutorProfile & { profile?: Profile; email?: string })[]>([]);
   const [students, setStudents] = useState<StudentInfo[]>([]);
@@ -176,6 +179,21 @@ const AdminDashboard = () => {
     toast.success("Tutor removed");
   };
 
+  // Admin login form state
+  const [adminEmail, setAdminEmail] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [adminLoginLoading, setAdminLoginLoading] = useState(false);
+
+  const handleAdminLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAdminLoginLoading(true);
+    const { error } = await signIn(adminEmail, adminPassword);
+    setAdminLoginLoading(false);
+    if (error) {
+      toast.error("Login failed: " + error.message);
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen"><Navbar />
@@ -186,7 +204,54 @@ const AdminDashboard = () => {
     );
   }
 
-  if (!user || role !== "admin") return <Navigate to="/" />;
+  if (!user || role !== "admin") {
+    return (
+      <div className="min-h-screen">
+        <Navbar />
+        <div className="flex min-h-[80vh] items-center justify-center pt-16 px-4">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+            className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-elevated sm:p-8"
+          >
+            <div className="mb-6 flex flex-col items-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-coral-gradient">
+                <Shield className="h-6 w-6 text-primary-foreground" />
+              </div>
+              <h2 className="mt-3 font-display text-xl font-bold text-foreground">Admin Access</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Sign in with admin credentials</p>
+            </div>
+            <form className="space-y-4" onSubmit={handleAdminLogin}>
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input placeholder="admin@email.com" className="pl-10" type="email"
+                    value={adminEmail} onChange={e => setAdminEmail(e.target.value)} required />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input type="password" placeholder="••••••••" className="pl-10"
+                    value={adminPassword} onChange={e => setAdminPassword(e.target.value)} required />
+                </div>
+              </div>
+              <Button type="submit" disabled={adminLoginLoading}
+                className="w-full gap-2 bg-coral-gradient text-primary-foreground hover:opacity-90">
+                {adminLoginLoading ? "Signing in..." : "Sign In as Admin"}
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </form>
+            {user && role !== "admin" && (
+              <p className="mt-4 text-center text-xs text-destructive">
+                You're signed in but don't have admin privileges.
+              </p>
+            )}
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
 
   const statusColor = (s: string) => {
     switch (s) {
