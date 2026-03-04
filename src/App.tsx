@@ -9,6 +9,8 @@ import Discover from "./pages/Discover";
 import HowItWorks from "./pages/HowItWorks";
 import Login from "./pages/Login";
 import TutorDetail from "./pages/TutorDetail";
+import TutorDashboard from "./pages/TutorDashboard";
+import StudentDashboard from "./pages/StudentDashboard";
 import Messages from "./pages/Messages";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
@@ -28,6 +30,8 @@ const App = () => (
             <Route path="/how-it-works" element={<HowItWorks />} />
             <Route path="/login" element={<Login />} />
             <Route path="/tutor/:id" element={<TutorDetail />} />
+            <Route path="/my-profile" element={<TutorDashboard />} />
+            <Route path="/dashboard" element={<StudentDashboard />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="*" element={<NotFound />} />

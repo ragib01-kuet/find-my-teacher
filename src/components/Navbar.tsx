@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { GraduationCap, Search, LogIn, Menu, X, MessageCircle, LogOut } from "lucide-react";
+import { GraduationCap, Search, LogIn, Menu, X, MessageCircle, LogOut, User, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -16,7 +16,6 @@ const Navbar = () => {
   const handleTitleClick = useCallback(() => {
     const now = Date.now();
     clickTimesRef.current.push(now);
-    // Keep only clicks within last 3 seconds
     clickTimesRef.current = clickTimesRef.current.filter(t => now - t < 3000);
     if (clickTimesRef.current.length >= 5) {
       clickTimesRef.current = [];
@@ -30,7 +29,13 @@ const Navbar = () => {
     { to: "/how-it-works", label: "How It Works" },
   ];
 
-  if (user) {
+  if (user && role === "tutor") {
+    links.push({ to: "/my-profile", label: "My Profile" });
+    links.push({ to: "/messages", label: "Messages" });
+  } else if (user && role === "student") {
+    links.push({ to: "/dashboard", label: "Dashboard" });
+    links.push({ to: "/messages", label: "Messages" });
+  } else if (user) {
     links.push({ to: "/messages", label: "Messages" });
   }
 
@@ -68,6 +73,20 @@ const Navbar = () => {
         <div className="hidden items-center gap-3 md:flex">
           {user ? (
             <>
+              {role === "tutor" && (
+                <Link to="/my-profile">
+                  <Button variant="ghost" size="sm" className="gap-2">
+                    <User className="h-4 w-4" />
+                  </Button>
+                </Link>
+              )}
+              {role === "student" && (
+                <Link to="/dashboard">
+                  <Button variant="ghost" size="sm" className="gap-2">
+                    <LayoutDashboard className="h-4 w-4" />
+                  </Button>
+                </Link>
+              )}
               <Link to="/messages">
                 <Button variant="ghost" size="sm" className="gap-2">
                   <MessageCircle className="h-4 w-4" />

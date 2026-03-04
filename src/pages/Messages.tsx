@@ -22,7 +22,6 @@ interface MessageReaction {
 }
 
 interface EnrichedMessage extends MessageType {
-  reply_to_id?: string | null;
   reactions?: MessageReaction[];
   reply_to?: MessageType | null;
 }
