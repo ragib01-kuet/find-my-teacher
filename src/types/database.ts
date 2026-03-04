@@ -65,6 +65,7 @@ export interface Message {
   content: string;
   is_flagged: boolean;
   is_read: boolean;
+  reply_to_id: string | null;
   created_at: string;
 }
 
