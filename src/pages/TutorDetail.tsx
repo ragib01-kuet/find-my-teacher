@@ -323,45 +323,51 @@ const TutorDetail = () => {
 
                 {/* Write a review */}
                 {user && role === "student" && (
-                  <div className="mt-4 rounded-xl border border-amber-200 dark:border-amber-800/40 bg-card p-4">
-                    <p className="text-sm font-medium text-foreground mb-3">Leave a review</p>
+                  <div className="mt-4 rounded-xl border-2 border-amber-200 dark:border-amber-800/40 bg-card p-4 sm:p-5">
+                    <p className="text-sm font-semibold text-foreground mb-1">⭐ Rate this tutor</p>
+                    <p className="text-xs text-muted-foreground mb-3">Share your experience to help other students</p>
                     {/* Star rating */}
-                    <div className="flex items-center gap-1 mb-3">
+                    <div className="flex items-center gap-1.5 mb-3">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button
                           key={star}
                           onClick={() => setReviewRating(star)}
                           onMouseEnter={() => setReviewHover(star)}
                           onMouseLeave={() => setReviewHover(0)}
-                          className="transition-transform hover:scale-110"
+                          className="transition-transform hover:scale-125 active:scale-95"
                         >
-                          <Star className={`h-6 w-6 sm:h-7 sm:w-7 ${
+                          <Star className={`h-7 w-7 sm:h-8 sm:w-8 transition-colors ${
                             star <= (reviewHover || reviewRating)
                               ? "fill-amber-400 text-amber-400"
-                              : "text-border"
+                              : "text-border hover:text-amber-200"
                           }`} />
                         </button>
                       ))}
                       {reviewRating > 0 && (
-                        <span className="ml-2 text-sm text-muted-foreground">{reviewRating}/5</span>
+                        <span className="ml-2 text-sm font-medium text-amber-600">{reviewRating}/5</span>
                       )}
                     </div>
-                    <div className="flex gap-2">
-                      <Textarea
-                        placeholder="Write your experience..."
-                        value={reviewComment}
-                        onChange={(e) => setReviewComment(e.target.value)}
-                        className="flex-1 text-sm min-h-[60px]"
-                      />
-                      <Button
-                        onClick={handleSubmitReview}
-                        disabled={submittingReview || reviewRating === 0}
-                        size="sm"
-                        className="self-end bg-amber-500 text-white hover:bg-amber-600"
-                      >
-                        <Send className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <Textarea
+                      placeholder="Write about your experience with this tutor..."
+                      value={reviewComment}
+                      onChange={(e) => setReviewComment(e.target.value)}
+                      className="text-sm min-h-[80px] mb-3"
+                    />
+                    <Button
+                      onClick={handleSubmitReview}
+                      disabled={submittingReview || reviewRating === 0}
+                      className="w-full gap-2 bg-amber-500 text-primary-foreground hover:bg-amber-600"
+                    >
+                      <Send className="h-4 w-4" />
+                      {submittingReview ? "Submitting..." : "Submit Review"}
+                    </Button>
+                  </div>
+                )}
+                {!user && (
+                  <div className="mt-4 rounded-xl border border-amber-200 dark:border-amber-800/40 bg-card p-4 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      <Link to="/login" className="font-semibold text-primary underline">Sign in</Link> as a student to leave a review.
+                    </p>
                   </div>
                 )}
 
