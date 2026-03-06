@@ -133,6 +133,10 @@ const TutorDashboard = () => {
       setTutor({ ...tutor, photo_url: photoUrl });
       toast.success("Profile photo updated!");
     }
+    // Reset file input so the same file can be re-selected
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   const handleSaveProfile = async () => {
