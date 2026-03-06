@@ -30,7 +30,6 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { mockTutors } from "@/data/mockTutors";
 
 const TutorDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -38,7 +37,6 @@ const TutorDetail = () => {
   const [tutor, setTutor] = useState<(TutorProfile & { profile?: Profile }) | null>(null);
   const [reviews, setReviews] = useState<(Review & { profile?: Profile })[]>([]);
   const [loading, setLoading] = useState(true);
-  const [useMock, setUseMock] = useState(false);
 
   // Interest form
   const [showInterest, setShowInterest] = useState(false);
@@ -47,6 +45,7 @@ const TutorDetail = () => {
   const [interestClass, setInterestClass] = useState("");
   const [interestBudget, setInterestBudget] = useState("");
   const [interestArea, setInterestArea] = useState("");
+  const [interestName, setInterestName] = useState("");
   const [sending, setSending] = useState(false);
 
   // Review form
@@ -57,6 +56,7 @@ const TutorDetail = () => {
 
   useEffect(() => {
     const fetchTutor = async () => {
+      // id is a tutor_profiles.id (UUID)
       const { data, error } = await supabase
         .from("tutor_profiles")
         .select("*")
@@ -72,6 +72,7 @@ const TutorDetail = () => {
 
         setTutor({ ...data, profile: profileData } as any);
 
+        // Fetch reviews for this tutor (by user_id)
         const { data: reviewsData } = await supabase
           .from("reviews")
           .select("*")
@@ -87,45 +88,53 @@ const TutorDetail = () => {
           );
           setReviews(enriched);
         }
-      } else {
-        const mock = mockTutors.find((t) => t.id === id);
-        if (mock) {
-          setUseMock(true);
-          setTutor({
-            id: mock.id, user_id: mock.id, department: mock.department, session: mock.session,
-            subjects: mock.subjects, preferred_areas: mock.areas,
-            fee_expectation: parseInt(mock.fee.replace(/,/g, "")),
-            experience: mock.experience, bio: mock.bio, photo_url: mock.photo,
-            cv_url: null, demo_video_url: null, status: "approved",
-            rating: mock.rating, total_reviews: 12, admin_notes: null,
-            created_at: "", updated_at: "",
-            profile: { full_name: mock.name } as any,
-          } as any);
-        }
       }
       setLoading(false);
     };
     fetchTutor();
   }, [id]);
 
+  // Pre-fill student name when user loads
+  useEffect(() => {
+    if (user) {
+      supabase.from("profiles").select("full_name").eq("user_id", user.id).single().then(({ data }) => {
+        if (data) setInterestName(data.full_name);
+      });
+    }
+  }, [user]);
+
   const handleSendInterest = async () => {
     if (!user) { toast.error("Please sign in to express interest"); return; }
     if (!tutor) return;
+    if (!interestSubject.trim()) { toast.error("Please specify a subject"); return; }
     setSending(true);
     const { error } = await supabase.from("tuition_requests").insert({
-      student_id: user.id, tutor_id: tutor.user_id,
-      message: interestMsg, subject: interestSubject,
-      class_level: interestClass,
+      student_id: user.id,
+      tutor_id: tutor.user_id,
+      message: interestMsg || null,
+      subject: interestSubject,
+      class_level: interestClass || null,
       budget: interestBudget ? parseInt(interestBudget) : null,
-      area: interestArea,
-    } as any);
+      area: interestArea || null,
+      student_name: interestName || null,
+    });
     setSending(false);
-    if (error) { toast.error("Failed to send request. " + error.message); }
-    else { toast.success("Interest sent! The tutor will be notified."); setShowInterest(false); }
+    if (error) {
+      toast.error("Failed to send request. " + error.message);
+    } else {
+      toast.success("Interest sent! The tutor will be notified.");
+      setShowInterest(false);
+      setInterestMsg("");
+      setInterestSubject("");
+      setInterestClass("");
+      setInterestBudget("");
+      setInterestArea("");
+    }
   };
 
   const handleSubmitReview = async () => {
     if (!user) { toast.error("Please sign in to leave a review"); return; }
+    if (role !== "student") { toast.error("Only students can leave reviews"); return; }
     if (!tutor) return;
     if (reviewRating === 0) { toast.error("Please select a star rating"); return; }
     setSubmittingReview(true);
@@ -136,13 +145,23 @@ const TutorDetail = () => {
       comment: reviewComment.trim() || null,
     });
     setSubmittingReview(false);
-    if (error) { toast.error("Failed to submit review. " + error.message); }
-    else {
+    if (error) {
+      toast.error("Failed to submit review. " + error.message);
+    } else {
       toast.success("Review posted!");
-      // Refresh reviews
       const { data: p } = await supabase.from("profiles").select("*").eq("user_id", user.id).single();
-      setReviews((prev) => [{ id: crypto.randomUUID(), tutor_id: tutor.user_id, student_id: user.id, rating: reviewRating, comment: reviewComment.trim() || null, deal_id: null, created_at: new Date().toISOString(), profile: p as Profile }, ...prev]);
+      setReviews((prev) => [{
+        id: crypto.randomUUID(),
+        tutor_id: tutor.user_id,
+        student_id: user.id,
+        rating: reviewRating,
+        comment: reviewComment.trim() || null,
+        deal_id: null,
+        created_at: new Date().toISOString(),
+        profile: p as Profile
+      }, ...prev]);
       setReviewRating(0);
+      setReviewHover(0);
       setReviewComment("");
     }
   };
@@ -223,12 +242,12 @@ const TutorDetail = () => {
                       <Calendar className="h-3.5 w-3.5" /> {tutor.experience || "N/A"} experience
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <MapPin className="h-3.5 w-3.5" /> {tutor.preferred_areas.join(", ")}
+                      <MapPin className="h-3.5 w-3.5" /> {tutor.preferred_areas?.join(", ") || "N/A"}
                     </div>
                   </div>
                   <div className="mt-4 border-t border-border pt-3">
                     <div className="text-center">
-                      <span className="font-display text-xl font-bold text-foreground">৳{tutor.fee_expectation.toLocaleString()}</span>
+                      <span className="font-display text-xl font-bold text-foreground">৳{tutor.fee_expectation?.toLocaleString()}</span>
                       <span className="text-muted-foreground text-sm">/month</span>
                     </div>
                   </div>
@@ -261,9 +280,13 @@ const TutorDetail = () => {
                           <Link to="/login" className="font-semibold underline">Sign in</Link> to send interest requests.
                         </div>
                       )}
+                      <div className="space-y-2">
+                        <Label>Your Name</Label>
+                        <Input placeholder="Your full name" value={interestName} onChange={(e) => setInterestName(e.target.value)} />
+                      </div>
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div className="space-y-2">
-                          <Label>Subject Needed</Label>
+                          <Label>Subject Needed *</Label>
                           <Input placeholder="e.g., Physics" value={interestSubject} onChange={(e) => setInterestSubject(e.target.value)} />
                         </div>
                         <div className="space-y-2">
@@ -284,6 +307,7 @@ const TutorDetail = () => {
                         <Textarea placeholder="Tell the tutor about your needs..." value={interestMsg} onChange={(e) => setInterestMsg(e.target.value)} />
                       </div>
                       <Button onClick={handleSendInterest} disabled={sending || !user} className="w-full bg-coral-gradient text-primary-foreground">
+                        <Send className="mr-2 h-4 w-4" />
                         {sending ? "Sending..." : "Send Interest Request"}
                       </Button>
                     </div>
@@ -307,18 +331,21 @@ const TutorDetail = () => {
                   <div className="h-2 w-2 rounded-full bg-emerald-500" /> Subjects
                 </h3>
                 <div className="mt-2 flex flex-wrap gap-2 sm:mt-3">
-                  {tutor.subjects.map((s) => (
+                  {tutor.subjects?.map((s) => (
                     <Badge key={s} className="rounded-full px-3 py-1 text-xs sm:text-sm bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border-0">
                       <BookOpen className="mr-1.5 h-3 w-3" /> {s}
                     </Badge>
                   ))}
+                  {(!tutor.subjects || tutor.subjects.length === 0) && (
+                    <p className="text-sm text-muted-foreground">No subjects listed yet.</p>
+                  )}
                 </div>
               </div>
 
               {/* Reviews - Amber/Gold themed */}
               <div className="rounded-2xl border-l-4 border-amber-500 bg-amber-50/50 dark:bg-amber-950/20 p-4 shadow-card sm:p-6">
                 <h3 className="font-display text-base font-semibold text-amber-700 dark:text-amber-400 sm:text-lg flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-amber-500" /> Reviews ({reviews.length || tutor.total_reviews})
+                  <div className="h-2 w-2 rounded-full bg-amber-500" /> Reviews ({reviews.length})
                 </h3>
 
                 {/* Write a review */}
@@ -331,6 +358,7 @@ const TutorDetail = () => {
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button
                           key={star}
+                          type="button"
                           onClick={() => setReviewRating(star)}
                           onMouseEnter={() => setReviewHover(star)}
                           onMouseLeave={() => setReviewHover(0)}
@@ -352,8 +380,10 @@ const TutorDetail = () => {
                       value={reviewComment}
                       onChange={(e) => setReviewComment(e.target.value)}
                       className="text-sm min-h-[80px] mb-3"
+                      rows={3}
                     />
                     <Button
+                      type="button"
                       onClick={handleSubmitReview}
                       disabled={submittingReview || reviewRating === 0}
                       className="w-full gap-2 bg-amber-500 text-primary-foreground hover:bg-amber-600"

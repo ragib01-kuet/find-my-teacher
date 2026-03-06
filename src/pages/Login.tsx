@@ -227,7 +227,10 @@ const Login = () => {
           </Tabs>
 
           <p className="mt-8 text-center text-xs text-muted-foreground">
-            By continuing, you agree to our Terms of Service and Privacy Policy.
+            By continuing, you agree to our{" "}
+            <Link to="/terms" className="underline hover:text-foreground">Terms of Service</Link>{" "}
+            and{" "}
+            <Link to="/privacy" className="underline hover:text-foreground">Privacy Policy</Link>.
           </p>
         </motion.div>
       </div>
