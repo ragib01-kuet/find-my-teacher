@@ -1,26 +1,98 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import TutorCard from "@/components/TutorCard";
 import Footer from "@/components/Footer";
-import { useShuffledTutors } from "@/hooks/useShuffledTutors";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { Search, SlidersHorizontal, X, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 
 const allSubjects = ["Physics", "Mathematics", "Chemistry", "English", "ICT", "Biology", "Bangla", "Higher Math", "Accounting", "Economics", "General Math"];
 
+interface DiscoverTutor {
+  id: string;
+  user_id: string;
+  name: string;
+  photo: string;
+  department: string;
+  session: string;
+  subjects: string[];
+  areas: string[];
+  fee: string;
+  rating: number;
+  experience: string;
+}
+
 const Discover = () => {
-  const tutors = useShuffledTutors();
+  const { role } = useAuth();
+  const [tutors, setTutors] = useState<DiscoverTutor[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+
+  useEffect(() => {
+    const fetchTutors = async () => {
+      const { data, error } = await supabase
+        .from("tutor_profiles")
+        .select("*")
+        .eq("status", "approved");
+
+      if (error) {
+        console.error("Error fetching tutors:", error);
+        setLoading(false);
+        return;
+      }
+
+      if (data) {
+        const enriched = await Promise.all(
+          data.map(async (t: any) => {
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("full_name, avatar_url")
+              .eq("user_id", t.user_id)
+              .single();
+
+            return {
+              id: t.id,
+              user_id: t.user_id,
+              name: profile?.full_name || "Tutor",
+              photo: t.photo_url || profile?.avatar_url || "",
+              department: t.department,
+              session: t.session,
+              subjects: t.subjects || [],
+              areas: t.preferred_areas || [],
+              fee: t.fee_expectation?.toLocaleString() || "0",
+              rating: Number(t.rating) || 0,
+              experience: t.experience || "N/A",
+            } as DiscoverTutor;
+          })
+        );
+        // Shuffle for fair exposure
+        const shuffled = [...enriched].sort(() => Math.random() - 0.5);
+        setTutors(shuffled);
+      }
+      setLoading(false);
+    };
+    fetchTutors();
+  }, []);
 
   const toggleSubject = (s: string) => {
     setSelectedSubjects((prev) =>
       prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
     );
+  };
+
+  const handleDeleteTutor = async (tutorId: string, userId: string) => {
+    if (!confirm("Are you sure you want to delete this tutor profile?")) return;
+    await supabase.from("tutor_profiles").delete().eq("id", tutorId);
+    await supabase.from("tuition_requests").delete().eq("tutor_id", userId);
+    setTutors((prev) => prev.filter((t) => t.id !== tutorId));
+    toast.success("Tutor profile deleted");
   };
 
   const filtered = tutors.filter((t) => {
@@ -101,19 +173,39 @@ const Discover = () => {
         </div>
 
         <div className="container py-6 px-4 sm:py-10">
-          <p className="mb-4 text-sm text-muted-foreground sm:mb-6">
-            {filtered.length} tutor{filtered.length !== 1 ? "s" : ""} found
-          </p>
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
-            {filtered.map((tutor) => (
-              <TutorCard key={tutor.id} {...tutor} />
-            ))}
-          </div>
-          {filtered.length === 0 && (
-            <div className="py-20 text-center">
-              <p className="text-lg font-medium text-foreground">No tutors found</p>
-              <p className="mt-1 text-muted-foreground">Try adjusting your filters.</p>
+          {loading ? (
+            <div className="flex justify-center py-20">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
             </div>
+          ) : (
+            <>
+              <p className="mb-4 text-sm text-muted-foreground sm:mb-6">
+                {filtered.length} tutor{filtered.length !== 1 ? "s" : ""} found
+              </p>
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
+                {filtered.map((tutor) => (
+                  <div key={tutor.id} className="relative">
+                    <TutorCard {...tutor} />
+                    {role === "admin" && (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="absolute top-2 right-2 z-10 gap-1 text-xs"
+                        onClick={() => handleDeleteTutor(tutor.id, tutor.user_id)}
+                      >
+                        <Trash2 className="h-3 w-3" /> Delete
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {filtered.length === 0 && (
+                <div className="py-20 text-center">
+                  <p className="text-lg font-medium text-foreground">No tutors found</p>
+                  <p className="mt-1 text-muted-foreground">Try adjusting your filters or check back later.</p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
