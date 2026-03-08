@@ -114,10 +114,15 @@ const Navbar = () => {
                   </Button>
                 </Link>
               )}
-              <Link to="/messages">
+              <Link to="/messages" className="relative">
                 <Button variant="ghost" size="sm" className="gap-2">
                   <MessageCircle className="h-4 w-4" />
                 </Button>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
               </Link>
               <Button
                 variant="ghost"
