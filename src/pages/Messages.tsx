@@ -485,11 +485,52 @@ const Messages = () => {
                         size="sm"
                         variant="outline"
                         className="gap-1.5 text-xs h-8 border-rose-300 text-rose-600 hover:bg-rose-50 dark:border-rose-700 dark:text-rose-400 dark:hover:bg-rose-950/30"
-                        onClick={() => {
-                          supabase.from("tutor_profiles").select("id").eq("user_id", selectedRequest.tutor_id).single().then(({ data }) => {
-                            if (data) window.location.href = `/tutor/${data.id}`;
-                            else toast.error("Tutor profile not found");
-                          });
+                        onClick={async () => {
+                          // Check if already requested
+                          const { data: existing } = await supabase
+                            .from("demo_video_views")
+                            .select("id")
+                            .eq("tutor_id", selectedRequest.tutor_id)
+                            .eq("student_id", user.id)
+                            .maybeSingle();
+
+                          if (!existing) {
+                            // Create demo request record
+                            await supabase.from("demo_video_views").insert({
+                              tutor_id: selectedRequest.tutor_id,
+                              student_id: user.id,
+                            } as any);
+
+                            // Get student name for notification
+                            const { data: profile } = await supabase
+                              .from("profiles")
+                              .select("full_name")
+                              .eq("user_id", user.id)
+                              .single();
+                            const studentName = profile?.full_name || "A student";
+
+                            // Notify tutor
+                            await supabase.from("notifications").insert({
+                              user_id: selectedRequest.tutor_id,
+                              title: "Demo Class Requested",
+                              message: `${studentName} requested to watch your demo class`,
+                              type: "demo_request",
+                              metadata: { student_id: user.id, student_name: studentName },
+                            } as any);
+                          }
+
+                          // Navigate to tutor profile
+                          const { data: tutorProfile } = await supabase
+                            .from("tutor_profiles")
+                            .select("id")
+                            .eq("user_id", selectedRequest.tutor_id)
+                            .single();
+                          if (tutorProfile) {
+                            window.location.href = `/tutor/${tutorProfile.id}`;
+                          } else {
+                            toast.error("Tutor profile not found");
+                          }
+                          toast.success("Demo class request sent! You can now watch the demo.");
                         }}
                       >
                         <Video className="h-3.5 w-3.5" /> Request Demo
