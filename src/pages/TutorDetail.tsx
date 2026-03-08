@@ -158,6 +158,40 @@ const TutorDetail = () => {
     }
   };
 
+  const handleRequestDemo = async () => {
+    if (!user || !tutor) return;
+    setRequestingDemo(true);
+    try {
+      const { error } = await supabase.from("demo_video_views").insert({
+        tutor_id: tutor.user_id,
+        student_id: user.id,
+      });
+      if (error) {
+        toast.error("Failed to request demo: " + error.message);
+      } else {
+        // Notify tutor
+        const { data: profile } = await supabase.from("profiles").select("full_name").eq("user_id", user.id).single();
+        await supabase.from("notifications").insert({
+          user_id: tutor.user_id,
+          title: "Demo Class Requested",
+          message: `${profile?.full_name || "A student"} requested access to your demo class`,
+          type: "demo_request",
+          metadata: { student_id: user.id },
+        } as any);
+        // Refresh demo view
+        const { data } = await supabase.from("demo_video_views")
+          .select("*").eq("tutor_id", tutor.user_id).eq("student_id", user.id).maybeSingle();
+        if (data) {
+          setDemoView(data as DemoVideoView);
+        }
+        toast.success("Demo access granted! You can now watch the video.");
+      }
+    } catch (e) {
+      toast.error("Something went wrong");
+    }
+    setRequestingDemo(false);
+  };
+
   const handleWatchDemo = async () => {
     if (!user || !tutor) return;
 
