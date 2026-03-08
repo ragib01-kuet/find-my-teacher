@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   ArrowLeft, BookOpen, MapPin, Star, Calendar, GraduationCap,
-  Heart, Shield, Send, Video, Lock, Play,
+  Heart, Shield, Send, Video, Lock, Play, MessageCircle,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -159,22 +159,19 @@ const TutorDetail = () => {
 
   const handleWatchDemo = async () => {
     if (!user || !tutor) return;
+
+    // Check if student has requested demo via chatbox
+    if (!demoView) {
+      toast.error("You need to request a demo class from the chatbox first. Go to Messages, open a conversation with this tutor, and click 'Request Demo'.");
+      return;
+    }
+
     setShowDemoVideo(true);
 
-    // Record view + notify tutor
+    // Notify tutor
     const { data: profile } = await supabase.from("profiles").select("full_name").eq("user_id", user.id).single();
     const studentName = profile?.full_name || "A student";
 
-    // Upsert view record
-    if (!demoView) {
-      const { data: newView } = await supabase.from("demo_video_views").insert({
-        tutor_id: tutor.user_id,
-        student_id: user.id,
-      } as any).select().single();
-      if (newView) setDemoView(newView as DemoVideoView);
-    }
-
-    // Notify tutor
     await supabase.from("notifications").insert({
       user_id: tutor.user_id,
       title: "Demo Video Viewed",
@@ -309,62 +306,6 @@ const TutorDetail = () => {
                 </div>
               </div>
 
-              {/* Demo Video Preview Card - Always visible */}
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-                className="mt-4 overflow-hidden rounded-2xl border border-border bg-card shadow-card"
-              >
-                <div className="p-4 pb-2">
-                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <Video className="h-4 w-4 text-rose-500" /> Demo Class
-                  </h3>
-                </div>
-                {tutor.demo_video_url ? (
-                  <div className="relative">
-                    <video
-                      src={tutor.demo_video_url}
-                      className="w-full h-44 object-cover"
-                      style={{ filter: !user ? "blur(14px) brightness(0.7)" : "blur(6px) brightness(0.8)" }}
-                      muted
-                      preload="metadata"
-                    />
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      {!user ? (
-                        <div className="text-center space-y-2">
-                          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-foreground/20 backdrop-blur-sm border border-white/20">
-                            <Lock className="h-6 w-6 text-white" />
-                          </div>
-                          <p className="text-xs text-white/80 font-medium">Sign in to watch this demo</p>
-                          <Link to="/login" className="inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-lg">
-                            <Lock className="h-3.5 w-3.5" /> Sign in to watch
-                          </Link>
-                        </div>
-                      ) : (
-                        <div className="text-center space-y-2">
-                          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/90 backdrop-blur-sm shadow-lg">
-                            <Play className="h-6 w-6 text-primary-foreground ml-0.5" />
-                          </div>
-                          <button
-                            onClick={handleWatchDemo}
-                            className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-all hover:scale-105 shadow-lg"
-                          >
-                            <Play className="h-4 w-4" /> Watch Demo Class
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="px-4 pb-4">
-                    <div className="flex flex-col items-center justify-center rounded-xl bg-secondary/50 border border-dashed border-border py-8">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-                        <Video className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <p className="mt-3 text-sm font-medium text-muted-foreground">No demo video yet</p>
-                      <p className="mt-1 text-xs text-muted-foreground/70">This tutor hasn't uploaded a demo class</p>
-                    </div>
-                  </div>
-                )}
-              </motion.div>
             </motion.div>
 
             {/* Details */}
@@ -531,6 +472,83 @@ const TutorDetail = () => {
                     <p className="text-sm text-muted-foreground">No subjects listed yet.</p>
                   )}
                 </div>
+              </div>
+
+              {/* Demo Class Section */}
+              <div className="rounded-2xl border-l-4 border-rose-500 bg-rose-50/50 dark:bg-rose-950/20 p-4 shadow-card sm:p-6">
+                <h3 className="font-display text-base font-semibold text-rose-700 dark:text-rose-400 sm:text-lg flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-rose-500" />
+                  <Video className="h-4 w-4" /> Demo Class
+                </h3>
+
+                {tutor.demo_video_url ? (
+                  <div className="mt-3 relative rounded-xl overflow-hidden">
+                    <video
+                      src={tutor.demo_video_url}
+                      className="w-full h-52 object-cover"
+                      style={{
+                        filter: !user
+                          ? "blur(16px) brightness(0.6)"
+                          : !demoView
+                          ? "blur(10px) brightness(0.7)"
+                          : "blur(6px) brightness(0.8)",
+                      }}
+                      muted
+                      preload="metadata"
+                    />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      {!user ? (
+                        <div className="text-center space-y-2">
+                          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-foreground/20 backdrop-blur-sm border border-white/20">
+                            <Lock className="h-6 w-6 text-white" />
+                          </div>
+                          <p className="text-xs text-white/80 font-medium">Sign in to access demo class</p>
+                          <Link to="/login" className="inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-lg">
+                            <Lock className="h-3.5 w-3.5" /> Sign in
+                          </Link>
+                        </div>
+                      ) : !demoView ? (
+                        <div className="text-center space-y-2 px-4">
+                          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-foreground/20 backdrop-blur-sm border border-white/20">
+                            <MessageCircle className="h-6 w-6 text-white" />
+                          </div>
+                          <p className="text-sm text-white font-semibold">Request Demo from Chatbox</p>
+                          <p className="text-xs text-white/70 max-w-[280px]">
+                            Send a message to this tutor first, then click "Request Demo" in the chatbox to unlock this video.
+                          </p>
+                          <Link
+                            to="/messages"
+                            className="inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-lg"
+                          >
+                            <MessageCircle className="h-3.5 w-3.5" /> Go to Messages
+                          </Link>
+                        </div>
+                      ) : (
+                        <div className="text-center space-y-2">
+                          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/90 backdrop-blur-sm shadow-lg">
+                            <Play className="h-6 w-6 text-primary-foreground ml-0.5" />
+                          </div>
+                          <button
+                            onClick={handleWatchDemo}
+                            className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-all hover:scale-105 shadow-lg"
+                          >
+                            <Play className="h-4 w-4" /> Watch Demo Class
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-3">
+                    <div className="flex flex-col items-center justify-center rounded-xl bg-secondary/50 border border-dashed border-border py-8">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                        <Video className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <p className="mt-3 text-sm font-medium text-muted-foreground">No demo video yet</p>
+                      <p className="mt-1 text-xs text-muted-foreground/70">This tutor hasn't uploaded a demo class</p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Reviews */}
