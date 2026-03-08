@@ -1,15 +1,42 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { GraduationCap, Search, LogIn, Menu, X, MessageCircle, LogOut, User, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, role, signOut } = useAuth();
+
+  // Fetch unread message count
+  useEffect(() => {
+    if (!user) { setUnreadCount(0); return; }
+
+    const fetchUnread = async () => {
+      const { count } = await supabase
+        .from("messages")
+        .select("*", { count: "exact", head: true })
+        .neq("sender_id", user.id)
+        .eq("is_read", false);
+      setUnreadCount(count || 0);
+    };
+
+    fetchUnread();
+
+    const channel = supabase
+      .channel("unread-nav")
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => {
+        fetchUnread();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id]);
 
   // Secret admin access: 5 clicks within 3 seconds
   const clickTimesRef = useRef<number[]>([]);
@@ -59,13 +86,18 @@ const Navbar = () => {
             <Link
               key={link.to}
               to={link.to}
-              className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              className={`relative rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
                 location.pathname === link.to
                   ? "bg-secondary text-foreground"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {link.label}
+              {link.label === "Messages" && unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
             </Link>
           ))}
         </div>
@@ -87,10 +119,15 @@ const Navbar = () => {
                   </Button>
                 </Link>
               )}
-              <Link to="/messages">
+              <Link to="/messages" className="relative">
                 <Button variant="ghost" size="sm" className="gap-2">
                   <MessageCircle className="h-4 w-4" />
                 </Button>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
               </Link>
               <Button
                 variant="ghost"
@@ -142,9 +179,14 @@ const Navbar = () => {
                   key={link.to}
                   to={link.to}
                   onClick={() => setMobileOpen(false)}
-                  className="rounded-lg px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  className="relative rounded-lg px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
                 >
                   {link.label}
+                  {link.label === "Messages" && unreadCount > 0 && (
+                    <span className="ml-2 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
                 </Link>
               ))}
               {user ? (
