@@ -368,6 +368,8 @@ const TutorDetail = () => {
                   </DialogContent>
                 </Dialog>
               </div>
+              )}
+
 
               {/* Demo Video Dialog */}
               <Dialog open={showDemoVideo} onOpenChange={setShowDemoVideo}>
