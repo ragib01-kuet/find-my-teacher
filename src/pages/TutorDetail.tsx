@@ -159,22 +159,19 @@ const TutorDetail = () => {
 
   const handleWatchDemo = async () => {
     if (!user || !tutor) return;
+
+    // Check if student has requested demo via chatbox
+    if (!demoView) {
+      toast.error("You need to request a demo class from the chatbox first. Go to Messages, open a conversation with this tutor, and click 'Request Demo'.");
+      return;
+    }
+
     setShowDemoVideo(true);
 
-    // Record view + notify tutor
+    // Notify tutor
     const { data: profile } = await supabase.from("profiles").select("full_name").eq("user_id", user.id).single();
     const studentName = profile?.full_name || "A student";
 
-    // Upsert view record
-    if (!demoView) {
-      const { data: newView } = await supabase.from("demo_video_views").insert({
-        tutor_id: tutor.user_id,
-        student_id: user.id,
-      } as any).select().single();
-      if (newView) setDemoView(newView as DemoVideoView);
-    }
-
-    // Notify tutor
     await supabase.from("notifications").insert({
       user_id: tutor.user_id,
       title: "Demo Video Viewed",
