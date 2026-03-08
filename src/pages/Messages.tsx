@@ -154,6 +154,47 @@ const Messages = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Typing indicator via Realtime Presence
+  useEffect(() => {
+    if (!selectedRequest || !user || selectedRequest.status !== "accepted") {
+      setOtherTyping(false);
+      return;
+    }
+
+    const channel = supabase.channel(`typing-${selectedRequest.id}`, {
+      config: { presence: { key: user.id } },
+    });
+
+    channel
+      .on("presence", { event: "sync" }, () => {
+        const state = channel.presenceState();
+        const otherId = role === "tutor" ? selectedRequest.student_id : selectedRequest.tutor_id;
+        const otherPresence = state[otherId];
+        const isTyping = otherPresence?.some((p: any) => p.is_typing === true) ?? false;
+        setOtherTyping(isTyping);
+      })
+      .subscribe();
+
+    presenceChannelRef.current = channel;
+
+    return () => {
+      supabase.removeChannel(channel);
+      presenceChannelRef.current = null;
+    };
+  }, [selectedRequest?.id, selectedRequest?.status, user?.id, role]);
+
+  const broadcastTyping = (isTyping: boolean) => {
+    presenceChannelRef.current?.track({ is_typing: isTyping });
+  };
+
+  const handleTyping = () => {
+    broadcastTyping(true);
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      broadcastTyping(false);
+    }, 2000);
+  };
+
   // Focus input when chat opens
   useEffect(() => {
     if (selectedRequest?.status === "accepted") {
