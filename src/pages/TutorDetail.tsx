@@ -386,16 +386,18 @@ const TutorDetail = () => {
                           )}
                         </div>
                       ) : (
-                        <div className="text-center space-y-2">
+                        <div className="text-center space-y-2 px-4">
                           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/90 backdrop-blur-sm shadow-lg">
                             <Play className="h-6 w-6 text-primary-foreground ml-0.5" />
                           </div>
+                          <p className="text-sm text-white font-semibold">Demo Unlocked!</p>
                           <button
                             onClick={handleWatchDemo}
                             className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-all hover:scale-105 shadow-lg"
                           >
-                            <Play className="h-4 w-4" /> Watch Demo Class
+                            <Play className="h-4 w-4" /> Go to Dashboard to Watch
                           </button>
+                          <p className="text-[11px] text-white/70">One-time access — watch from your dashboard</p>
                         </div>
                       )}
                     </div>
