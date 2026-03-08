@@ -519,18 +519,13 @@ const Messages = () => {
                             } as any);
                           }
 
-                          // Navigate to tutor profile
-                          const { data: tutorProfile } = await supabase
-                            .from("tutor_profiles")
-                            .select("id")
-                            .eq("user_id", selectedRequest.tutor_id)
-                            .single();
-                          if (tutorProfile) {
-                            window.location.href = `/tutor/${tutorProfile.id}`;
-                          } else {
-                            toast.error("Tutor profile not found");
-                          }
-                          toast.success("Demo class request sent! You can now watch the demo.");
+                          toast.success("Demo request sent! Go to your Dashboard to watch the video.", {
+                            duration: 6000,
+                            action: {
+                              label: "Go to Dashboard",
+                              onClick: () => { window.location.href = "/dashboard"; },
+                            },
+                          });
                         }}
                       >
                         <Video className="h-3.5 w-3.5" /> Request Demo
