@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   ArrowLeft, BookOpen, MapPin, Star, Calendar, GraduationCap,
-  Heart, Shield, Send, Video, Lock, Play,
+  Heart, Shield, Send, Video, Lock, Play, MessageCircle,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
