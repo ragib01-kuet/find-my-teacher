@@ -70,6 +70,16 @@ const Discover = () => {
               .eq("user_id", t.user_id)
               .single();
 
+            // Fetch actual average rating from reviews
+            const { data: reviewsData } = await supabase
+              .from("reviews")
+              .select("rating")
+              .eq("tutor_id", t.user_id);
+            
+            const avgRating = reviewsData && reviewsData.length > 0
+              ? parseFloat((reviewsData.reduce((sum: number, r: any) => sum + r.rating, 0) / reviewsData.length).toFixed(1))
+              : 0;
+
             return {
               id: t.id,
               user_id: t.user_id,
@@ -80,7 +90,7 @@ const Discover = () => {
               subjects: t.subjects || [],
               areas: t.preferred_areas || [],
               fee: t.fee_expectation?.toLocaleString() || "0",
-              rating: Number(t.rating) || 0,
+              rating: avgRating,
               experience: t.experience || "N/A",
             } as DiscoverTutor;
           })

@@ -315,7 +315,8 @@ const TutorDetail = () => {
                 <p className="mt-1 text-sm text-muted-foreground">{tutor.department} Department, KUET • Session {tutor.session}</p>
               </div>
 
-              {/* Action Buttons */}
+              {/* Action Buttons - Only students (not tutors/admins) can express interest */}
+              {role !== "tutor" && (
               <div className="flex gap-3">
                 <Dialog open={showInterest} onOpenChange={setShowInterest}>
                   <DialogTrigger asChild>
@@ -367,6 +368,8 @@ const TutorDetail = () => {
                   </DialogContent>
                 </Dialog>
               </div>
+              )}
+
 
               {/* Demo Video Dialog */}
               <Dialog open={showDemoVideo} onOpenChange={setShowDemoVideo}>
