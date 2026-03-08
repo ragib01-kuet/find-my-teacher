@@ -44,6 +44,9 @@ const Messages = () => {
   const [showEmojiFor, setShowEmojiFor] = useState<string | null>(null);
   const [showMobileChat, setShowMobileChat] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [otherTyping, setOtherTyping] = useState(false);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const presenceChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -151,6 +154,47 @@ const Messages = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Typing indicator via Realtime Presence
+  useEffect(() => {
+    if (!selectedRequest || !user || selectedRequest.status !== "accepted") {
+      setOtherTyping(false);
+      return;
+    }
+
+    const channel = supabase.channel(`typing-${selectedRequest.id}`, {
+      config: { presence: { key: user.id } },
+    });
+
+    channel
+      .on("presence", { event: "sync" }, () => {
+        const state = channel.presenceState();
+        const otherId = role === "tutor" ? selectedRequest.student_id : selectedRequest.tutor_id;
+        const otherPresence = state[otherId];
+        const isTyping = otherPresence?.some((p: any) => p.is_typing === true) ?? false;
+        setOtherTyping(isTyping);
+      })
+      .subscribe();
+
+    presenceChannelRef.current = channel;
+
+    return () => {
+      supabase.removeChannel(channel);
+      presenceChannelRef.current = null;
+    };
+  }, [selectedRequest?.id, selectedRequest?.status, user?.id, role]);
+
+  const broadcastTyping = (isTyping: boolean) => {
+    presenceChannelRef.current?.track({ is_typing: isTyping });
+  };
+
+  const handleTyping = () => {
+    broadcastTyping(true);
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      broadcastTyping(false);
+    }, 2000);
+  };
+
   // Focus input when chat opens
   useEffect(() => {
     if (selectedRequest?.status === "accepted") {
@@ -185,6 +229,8 @@ const Messages = () => {
     } else {
       setNewMessage("");
       setReplyTo(null);
+      broadcastTyping(false);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       inputRef.current?.focus();
     }
   };
@@ -531,6 +577,25 @@ const Messages = () => {
                             </motion.div>
                           );
                         })}
+                        {/* Typing indicator */}
+                        <AnimatePresence>
+                          {otherTyping && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: 8 }}
+                              className="flex justify-start"
+                            >
+                              <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-md bg-secondary px-4 py-2.5">
+                                <div className="flex gap-1">
+                                  <span className="h-2 w-2 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:0ms]" />
+                                  <span className="h-2 w-2 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:150ms]" />
+                                  <span className="h-2 w-2 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:300ms]" />
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                         <div ref={messagesEndRef} />
                       </div>
                     )}
@@ -571,7 +636,10 @@ const Messages = () => {
                           type="text"
                           placeholder="Type a message..."
                           value={newMessage}
-                          onChange={(e) => setNewMessage(e.target.value)}
+                          onChange={(e) => {
+                            setNewMessage(e.target.value);
+                            handleTyping();
+                          }}
                           className="flex-1 rounded-full bg-secondary px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/30 transition-shadow"
                         />
                         <Button
