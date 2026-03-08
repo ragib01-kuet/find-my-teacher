@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -43,15 +43,8 @@ const TutorDetail = () => {
   const [reviewComment, setReviewComment] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
 
-  // Demo video state
-  const [showDemoVideo, setShowDemoVideo] = useState(false);
+  // Demo video state (only need demoView for access check)
   const [demoView, setDemoView] = useState<DemoVideoView | null>(null);
-  const [videoCompleted, setVideoCompleted] = useState(false);
-  const [demoRating, setDemoRating] = useState(0);
-  const [demoRatingHover, setDemoRatingHover] = useState(0);
-  const [demoComment, setDemoComment] = useState("");
-  const [submittingDemoRating, setSubmittingDemoRating] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     const fetchTutor = async () => {
@@ -93,8 +86,6 @@ const TutorDetail = () => {
       .then(({ data }) => {
         if (data) {
           setDemoView(data as DemoVideoView);
-          setVideoCompleted(data.completed);
-          if (data.rating) setDemoRating(data.rating);
         }
       });
   }, [user?.id, tutor?.user_id]);
@@ -157,71 +148,15 @@ const TutorDetail = () => {
     }
   };
 
-  const handleWatchDemo = async () => {
+  const handleWatchDemo = () => {
     if (!user || !tutor) return;
-
-    // Check if student has requested demo via chatbox
     if (!demoView) {
-      toast.error("You need to request a demo class from the chatbox first. Go to Messages, open a conversation with this tutor, and click 'Request Demo'.");
+      toast.error("You need to request a demo class from the chatbox first.");
       return;
     }
-
-    setShowDemoVideo(true);
-
-    // Notify tutor
-    const { data: profile } = await supabase.from("profiles").select("full_name").eq("user_id", user.id).single();
-    const studentName = profile?.full_name || "A student";
-
-    await supabase.from("notifications").insert({
-      user_id: tutor.user_id,
-      title: "Demo Video Viewed",
-      message: `${studentName} is watching your demo class video`,
-      type: "demo_watch",
-      metadata: { student_id: user.id, student_name: studentName },
-    } as any);
-  };
-
-  const handleVideoEnded = async () => {
-    setVideoCompleted(true);
-    if (!user || !tutor) return;
-    // Mark as completed
-    await supabase.from("demo_video_views")
-      .update({ completed: true } as any)
-      .eq("tutor_id", tutor.user_id)
-      .eq("student_id", user.id);
-  };
-
-  const handleSubmitDemoRating = async () => {
-    if (!user || !tutor) return;
-    if (demoRating === 0) { toast.error("Please select a star rating"); return; }
-    if (!demoComment.trim() || demoComment.trim().length < 20) {
-      toast.error("Please write a constructive comment (at least 20 characters). Example: 'The Newton's 3rd law topic was not clearly explained'");
-      return;
-    }
-    setSubmittingDemoRating(true);
-
-    const { error } = await supabase.from("demo_video_views")
-      .update({ rating: demoRating, comment: demoComment.trim() } as any)
-      .eq("tutor_id", tutor.user_id)
-      .eq("student_id", user.id);
-
-    if (!error) {
-      // Notify tutor about rating
-      const { data: profile } = await supabase.from("profiles").select("full_name").eq("user_id", user.id).single();
-      await supabase.from("notifications").insert({
-        user_id: tutor.user_id,
-        title: "Demo Class Rated",
-        message: `${profile?.full_name || "A student"} rated your demo class ${demoRating}/5 ⭐`,
-        type: "demo_rating",
-        metadata: { student_id: user.id, rating: demoRating, comment: demoComment.trim() },
-      } as any);
-
-      setDemoView(prev => prev ? { ...prev, rating: demoRating, comment: demoComment.trim() } : prev);
-      toast.success("Thank you for your feedback!");
-    } else {
-      toast.error("Failed to submit rating");
-    }
-    setSubmittingDemoRating(false);
+    // Redirect to student dashboard where the video player lives
+    toast.success("Redirecting to your dashboard to watch the demo...");
+    window.location.href = "/dashboard";
   };
 
   if (loading) {
@@ -371,84 +306,6 @@ const TutorDetail = () => {
               )}
 
 
-              {/* Demo Video Dialog */}
-              <Dialog open={showDemoVideo} onOpenChange={setShowDemoVideo}>
-                <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle className="font-display flex items-center gap-2">
-                      <Video className="h-5 w-5 text-rose-500" /> Demo Class — {name}
-                    </DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <video
-                      ref={videoRef}
-                      src={tutor.demo_video_url || ""}
-                      controls
-                      className="w-full rounded-xl"
-                      onEnded={handleVideoEnded}
-                      style={{ maxHeight: 400 }}
-                    />
-
-                    {/* Rating section - only after video completion */}
-                    {videoCompleted && !demoView?.rating ? (
-                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                        className="rounded-xl border-2 border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/20 p-4"
-                      >
-                        <p className="text-sm font-semibold text-foreground mb-1">⭐ Rate this demo class</p>
-                        <p className="text-xs text-muted-foreground mb-3">
-                          Your constructive feedback helps the tutor improve. Please mention specifics like topics you didn't understand or communication issues.
-                        </p>
-                        <div className="flex items-center gap-1.5 mb-3">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <button key={star} type="button"
-                              onClick={() => setDemoRating(star)}
-                              onMouseEnter={() => setDemoRatingHover(star)}
-                              onMouseLeave={() => setDemoRatingHover(0)}
-                              className="transition-transform hover:scale-125 active:scale-95"
-                            >
-                              <Star className={`h-7 w-7 transition-colors ${
-                                star <= (demoRatingHover || demoRating)
-                                  ? "fill-amber-400 text-amber-400"
-                                  : "text-border hover:text-amber-200"
-                              }`} />
-                            </button>
-                          ))}
-                          {demoRating > 0 && <span className="ml-2 text-sm font-medium text-amber-600">{demoRating}/5</span>}
-                        </div>
-                        <Textarea
-                          placeholder="Write constructive feedback (required). E.g.: 'Did not understand Newton's 3rd law topic clearly' or 'All topics were explained perfectly, great communication'"
-                          value={demoComment}
-                          onChange={(e) => setDemoComment(e.target.value)}
-                          className="text-sm min-h-[80px] mb-2"
-                          rows={3}
-                        />
-                        <p className="text-[10px] text-muted-foreground mb-3">Minimum 20 characters required</p>
-                        <Button
-                          onClick={handleSubmitDemoRating}
-                          disabled={submittingDemoRating || demoRating === 0 || demoComment.trim().length < 20}
-                          className="w-full gap-2 bg-amber-500 text-primary-foreground hover:bg-amber-600"
-                        >
-                          <Star className="h-4 w-4" />
-                          {submittingDemoRating ? "Submitting..." : "Submit Rating"}
-                        </Button>
-                      </motion.div>
-                    ) : demoView?.rating ? (
-                      <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 p-4 text-center">
-                        <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
-                          ✅ You rated this demo class {demoView.rating}/5
-                        </p>
-                        {demoView.comment && <p className="mt-1 text-xs text-muted-foreground">"{demoView.comment}"</p>}
-                      </div>
-                    ) : (
-                      <div className="rounded-xl bg-secondary/50 p-3 text-center">
-                        <p className="text-xs text-muted-foreground">
-                          Watch the full video to unlock the rating option
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </DialogContent>
-              </Dialog>
 
               {/* Bio */}
               <div className="rounded-2xl border-l-4 border-blue-500 bg-blue-50/50 dark:bg-blue-950/20 p-4 shadow-card sm:p-6">
@@ -529,16 +386,18 @@ const TutorDetail = () => {
                           )}
                         </div>
                       ) : (
-                        <div className="text-center space-y-2">
+                        <div className="text-center space-y-2 px-4">
                           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/90 backdrop-blur-sm shadow-lg">
                             <Play className="h-6 w-6 text-primary-foreground ml-0.5" />
                           </div>
+                          <p className="text-sm text-white font-semibold">Demo Unlocked!</p>
                           <button
                             onClick={handleWatchDemo}
                             className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-all hover:scale-105 shadow-lg"
                           >
-                            <Play className="h-4 w-4" /> Watch Demo Class
+                            <Play className="h-4 w-4" /> Go to Dashboard to Watch
                           </button>
+                          <p className="text-[11px] text-white/70">One-time access — watch from your dashboard</p>
                         </div>
                       )}
                     </div>
