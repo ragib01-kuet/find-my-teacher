@@ -23,7 +23,7 @@ import { toast } from "sonner";
 import { Navigate, Link } from "react-router-dom";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-type TabKey = "home" | "requests" | "notifications" | "reviews";
+type TabKey = "home" | "requests" | "notifications" | "reviews" | "demo_views";
 
 const TutorDashboard = () => {
   const { user, role, loading: authLoading } = useAuth();
