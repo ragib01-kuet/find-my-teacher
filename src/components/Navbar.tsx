@@ -1,15 +1,42 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { GraduationCap, Search, LogIn, Menu, X, MessageCircle, LogOut, User, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, role, signOut } = useAuth();
+
+  // Fetch unread message count
+  useEffect(() => {
+    if (!user) { setUnreadCount(0); return; }
+
+    const fetchUnread = async () => {
+      const { count } = await supabase
+        .from("messages")
+        .select("*", { count: "exact", head: true })
+        .neq("sender_id", user.id)
+        .eq("is_read", false);
+      setUnreadCount(count || 0);
+    };
+
+    fetchUnread();
+
+    const channel = supabase
+      .channel("unread-nav")
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => {
+        fetchUnread();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id]);
 
   // Secret admin access: 5 clicks within 3 seconds
   const clickTimesRef = useRef<number[]>([]);
