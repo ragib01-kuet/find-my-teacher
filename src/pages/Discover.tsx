@@ -49,8 +49,21 @@ const Discover = () => {
       }
 
       if (data) {
+        // Filter to only 100% complete profiles
+        const completeTutors = data.filter((t: any) => {
+          return (
+            !!t.photo_url &&
+            !!t.bio && t.bio.trim().length > 0 &&
+            t.subjects && t.subjects.length > 0 &&
+            t.preferred_areas && t.preferred_areas.length > 0 &&
+            t.fee_expectation > 0 &&
+            !!t.experience && t.experience.trim().length > 0 &&
+            !!t.demo_video_url
+          );
+        });
+
         const enriched = await Promise.all(
-          data.map(async (t: any) => {
+          completeTutors.map(async (t: any) => {
             const { data: profile } = await supabase
               .from("profiles")
               .select("full_name, avatar_url")
@@ -72,7 +85,6 @@ const Discover = () => {
             } as DiscoverTutor;
           })
         );
-        // Shuffle for fair exposure
         const shuffled = [...enriched].sort(() => Math.random() - 0.5);
         setTutors(shuffled);
       }
@@ -119,7 +131,7 @@ const Discover = () => {
               Discover <span className="text-gradient-coral">Tutors</span>
             </h1>
             <p className="mt-2 text-sm text-muted-foreground sm:text-base">
-              Browse verified KUET tutors. No sign-in required to explore.
+              Browse verified KUET tutors with complete profiles. No sign-in required to explore.
             </p>
 
             <div className="mt-4 flex gap-3 sm:mt-6">
@@ -202,7 +214,7 @@ const Discover = () => {
               {filtered.length === 0 && (
                 <div className="py-20 text-center">
                   <p className="text-lg font-medium text-foreground">No tutors found</p>
-                  <p className="mt-1 text-muted-foreground">Try adjusting your filters or check back later.</p>
+                  <p className="mt-1 text-muted-foreground">Only tutors with 100% complete profiles appear here. Try adjusting your filters.</p>
                 </div>
               )}
             </>
