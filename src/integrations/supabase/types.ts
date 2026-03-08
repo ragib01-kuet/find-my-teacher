@@ -61,6 +61,39 @@ export type Database = {
           },
         ]
       }
+      demo_video_views: {
+        Row: {
+          comment: string | null
+          completed: boolean
+          created_at: string
+          id: string
+          rating: number | null
+          student_id: string
+          tutor_id: string
+          watched_at: string
+        }
+        Insert: {
+          comment?: string | null
+          completed?: boolean
+          created_at?: string
+          id?: string
+          rating?: number | null
+          student_id: string
+          tutor_id: string
+          watched_at?: string
+        }
+        Update: {
+          comment?: string | null
+          completed?: boolean
+          created_at?: string
+          id?: string
+          rating?: number | null
+          student_id?: string
+          tutor_id?: string
+          watched_at?: string
+        }
+        Relationships: []
+      }
       message_reactions: {
         Row: {
           created_at: string
@@ -140,6 +173,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          metadata: Json | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          metadata?: Json | null
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          metadata?: Json | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
