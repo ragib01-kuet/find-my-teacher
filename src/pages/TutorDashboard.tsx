@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { TutorProfile, Profile, TuitionRequest, Review } from "@/types/database";
+import { TutorProfile, Profile, TuitionRequest, Review, Notification, getProfileCompletion } from "@/types/database";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
@@ -17,10 +18,12 @@ import {
   GraduationCap, Edit3, MapPin, BookOpen, Star, Calendar, Phone,
   MessageCircle, Users, Heart, Check, X, Save, Plus, Camera,
   Grid3X3, Inbox, Settings, Share2, Award, TrendingUp,
+  Bell, Video, Upload, Trash2, AlertCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { Navigate, Link } from "react-router-dom";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const TutorDashboard = () => {
   const { user, role, loading: authLoading } = useAuth();
@@ -28,11 +31,14 @@ const TutorDashboard = () => {
   const [tutor, setTutor] = useState<TutorProfile | null>(null);
   const [requests, setRequests] = useState<(TuitionRequest & { student_name_resolved?: string })[]>([]);
   const [reviews, setReviews] = useState<(Review & { profile?: Profile })[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   // Edit form state
   const [editBio, setEditBio] = useState("");
@@ -72,7 +78,6 @@ const TutorDashboard = () => {
         setRequests(enriched);
       }
 
-      // Fetch reviews
       const { data: revs } = await supabase
         .from("reviews").select("*").eq("tutor_id", user.id)
         .order("created_at", { ascending: false });
@@ -86,57 +91,110 @@ const TutorDashboard = () => {
         setReviews(enrichedRevs);
       }
 
+      // Fetch notifications
+      const { data: notifs } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (notifs) setNotifications(notifs as Notification[]);
+
       setLoading(false);
     };
     fetchData();
   }, [user, role]);
 
+  // Realtime notifications
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("tutor-notifications")
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "notifications",
+        filter: `user_id=eq.${user.id}`,
+      }, (payload) => {
+        setNotifications((prev) => [payload.new as Notification, ...prev]);
+        toast.info((payload.new as any).title);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id]);
+
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user || !tutor) return;
-
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please select an image file");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image must be less than 5MB");
-      return;
-    }
+    if (!file.type.startsWith("image/")) { toast.error("Please select an image file"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("Image must be less than 5MB"); return; }
 
     setUploadingPhoto(true);
     const ext = file.name.split(".").pop();
     const filePath = `${user.id}/profile.${ext}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("avatars")
-      .upload(filePath, file, { upsert: true });
-
-    if (uploadError) {
-      toast.error("Upload failed: " + uploadError.message);
-      setUploadingPhoto(false);
-      return;
-    }
+    const { error: uploadError } = await supabase.storage.from("avatars").upload(filePath, file, { upsert: true });
+    if (uploadError) { toast.error("Upload failed: " + uploadError.message); setUploadingPhoto(false); return; }
 
     const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(filePath);
     const photoUrl = urlData.publicUrl + "?t=" + Date.now();
-
-    const { error: updateError } = await supabase
-      .from("tutor_profiles")
-      .update({ photo_url: photoUrl } as any)
-      .eq("id", tutor.id);
-
+    const { error: updateError } = await supabase.from("tutor_profiles").update({ photo_url: photoUrl } as any).eq("id", tutor.id);
     setUploadingPhoto(false);
-    if (updateError) {
-      toast.error("Failed to update profile photo");
-    } else {
-      setTutor({ ...tutor, photo_url: photoUrl });
-      toast.success("Profile photo updated!");
+    if (updateError) { toast.error("Failed to update profile photo"); }
+    else { setTutor({ ...tutor, photo_url: photoUrl }); toast.success("Profile photo updated!"); }
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user || !tutor) return;
+    if (!file.type.startsWith("video/")) { toast.error("Please select a video file"); return; }
+    if (file.size > 100 * 1024 * 1024) { toast.error("Video must be under 100MB"); return; }
+
+    // Check duration (approximate check via metadata)
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    const durationPromise = new Promise<number>((resolve) => {
+      video.onloadedmetadata = () => { resolve(video.duration); URL.revokeObjectURL(video.src); };
+      video.onerror = () => resolve(0);
+    });
+    video.src = URL.createObjectURL(file);
+    const duration = await durationPromise;
+    if (duration > 310) { // 5 min + 10 sec buffer
+      toast.error("Video must be 5 minutes or less");
+      return;
     }
-    // Reset file input so the same file can be re-selected
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+
+    setUploadingVideo(true);
+
+    // Delete previous video if exists
+    if (tutor.demo_video_url) {
+      const oldPath = tutor.demo_video_url.split("/demo-videos/")[1]?.split("?")[0];
+      if (oldPath) {
+        await supabase.storage.from("demo-videos").remove([decodeURIComponent(oldPath)]);
+      }
     }
+
+    const ext = file.name.split(".").pop();
+    const filePath = `${user.id}/demo.${ext}`;
+    const { error: uploadError } = await supabase.storage.from("demo-videos").upload(filePath, file, { upsert: true });
+    if (uploadError) { toast.error("Upload failed: " + uploadError.message); setUploadingVideo(false); return; }
+
+    const { data: urlData } = supabase.storage.from("demo-videos").getPublicUrl(filePath);
+    const videoUrl = urlData.publicUrl + "?t=" + Date.now();
+    const { error: updateError } = await supabase.from("tutor_profiles").update({ demo_video_url: videoUrl } as any).eq("id", tutor.id);
+    setUploadingVideo(false);
+    if (updateError) { toast.error("Failed to save video URL"); }
+    else { setTutor({ ...tutor, demo_video_url: videoUrl }); toast.success("Demo video uploaded!"); }
+    if (videoInputRef.current) videoInputRef.current.value = "";
+  };
+
+  const handleDeleteVideo = async () => {
+    if (!tutor || !tutor.demo_video_url || !user) return;
+    const oldPath = tutor.demo_video_url.split("/demo-videos/")[1]?.split("?")[0];
+    if (oldPath) await supabase.storage.from("demo-videos").remove([decodeURIComponent(oldPath)]);
+    await supabase.from("tutor_profiles").update({ demo_video_url: null } as any).eq("id", tutor.id);
+    setTutor({ ...tutor, demo_video_url: null });
+    toast.success("Demo video removed");
   };
 
   const handleSaveProfile = async () => {
@@ -168,6 +226,20 @@ const TutorDashboard = () => {
     if (!error) { toast.success("Request rejected"); setRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: "rejected" } : r)); }
   };
 
+  const markNotificationRead = async (notifId: string) => {
+    await supabase.from("notifications").update({ is_read: true } as any).eq("id", notifId);
+    setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, is_read: true } : n));
+  };
+
+  const markAllRead = async () => {
+    if (!user) return;
+    const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id);
+    if (unreadIds.length === 0) return;
+    await supabase.from("notifications").update({ is_read: true } as any).in("id", unreadIds);
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    toast.success("All notifications marked as read");
+  };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen"><Navbar />
@@ -186,6 +258,9 @@ const TutorDashboard = () => {
     ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)
     : (tutor?.rating || 0);
 
+  const completion = getProfileCompletion(tutor);
+  const unreadNotifs = notifications.filter(n => !n.is_read).length;
+
   const statusColor = (s: string) => {
     switch (s) {
       case "accepted": return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300";
@@ -195,7 +270,6 @@ const TutorDashboard = () => {
     }
   };
 
-  // Instagram-style highlights data
   const highlights = [
     { icon: BookOpen, label: "Subjects", value: tutor?.subjects?.length || 0, color: "bg-emerald-500" },
     { icon: MapPin, label: "Areas", value: tutor?.preferred_areas?.length || 0, color: "bg-blue-500" },
@@ -207,13 +281,14 @@ const TutorDashboard = () => {
     <div className="min-h-screen">
       <Navbar />
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+      <input ref={videoInputRef} type="file" accept="video/*" className="hidden" onChange={handleVideoUpload} />
 
       <div className="pt-16">
-        {/* Instagram-style Profile Header */}
+        {/* Profile Header */}
         <div className="border-b border-border bg-card">
           <div className="container py-6 px-4 sm:py-8">
             <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-start sm:gap-8 lg:gap-12">
-              {/* Profile Photo - Instagram circle */}
+              {/* Profile Photo */}
               <div className="relative shrink-0">
                 <div className="group relative h-24 w-24 overflow-hidden rounded-full ring-[3px] ring-primary/20 ring-offset-2 ring-offset-background sm:h-36 sm:w-36">
                   {tutor?.photo_url ? (
@@ -223,7 +298,6 @@ const TutorDashboard = () => {
                       <GraduationCap className="h-10 w-10 text-muted-foreground sm:h-14 sm:w-14" />
                     </div>
                   )}
-                  {/* Upload overlay */}
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploadingPhoto}
@@ -246,7 +320,6 @@ const TutorDashboard = () => {
 
               {/* Info Section */}
               <div className="flex-1 text-center sm:text-left">
-                {/* Name & Actions Row */}
                 <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:gap-4">
                   <h1 className="font-display text-xl font-bold text-foreground sm:text-2xl">
                     {profile?.full_name || "Tutor"}
@@ -263,7 +336,6 @@ const TutorDashboard = () => {
                           <DialogTitle className="font-display">Edit Your Profile</DialogTitle>
                         </DialogHeader>
                         <div className="space-y-4 pt-2">
-                          {/* Photo upload in dialog too */}
                           <div className="flex items-center gap-4">
                             <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full ring-2 ring-border">
                               {tutor?.photo_url ? (
@@ -348,11 +420,35 @@ const TutorDashboard = () => {
                   </div>
                 </div>
 
-                {/* Department & Contact */}
                 <p className="mt-1.5 text-sm text-muted-foreground">
                   {tutor?.department} Department, KUET • Session {tutor?.session}
                   {profile?.phone && <span className="ml-2"><Phone className="inline h-3 w-3" /> {profile.phone}</span>}
                 </p>
+
+                {/* Profile Completion Bar */}
+                <div className="mt-3 max-w-md">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-medium text-foreground">Profile Completion</span>
+                    <span className={`text-xs font-bold ${completion.percentage === 100 ? "text-emerald-600" : "text-amber-600"}`}>
+                      {completion.percentage}%
+                    </span>
+                  </div>
+                  <Progress value={completion.percentage} className="h-2" />
+                  {completion.missing.length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {completion.missing.map(m => (
+                        <Badge key={m} variant="outline" className="text-[9px] px-1.5 py-0 border-amber-300 text-amber-600 dark:border-amber-700 dark:text-amber-400">
+                          <AlertCircle className="mr-0.5 h-2.5 w-2.5" /> {m}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  {completion.percentage < 100 && (
+                    <p className="mt-1 text-[10px] text-amber-600 dark:text-amber-400">
+                      ⚠️ Complete your profile to 100% to appear in Find Tutors
+                    </p>
+                  )}
+                </div>
 
                 {tutor?.status === "pending" && (
                   <Badge className="mt-2 bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border-0">
@@ -360,7 +456,7 @@ const TutorDashboard = () => {
                   </Badge>
                 )}
 
-                {/* Stats Row - Instagram style */}
+                {/* Stats Row */}
                 <div className="mt-4 flex justify-center gap-8 sm:justify-start">
                   <div className="text-center">
                     <p className="font-display text-lg font-bold text-foreground">{requests.length}</p>
@@ -376,14 +472,12 @@ const TutorDashboard = () => {
                   </div>
                 </div>
 
-                {/* Bio */}
                 {tutor?.bio ? (
                   <p className="mt-3 max-w-lg text-sm text-foreground leading-relaxed">{tutor.bio}</p>
                 ) : (
                   <p className="mt-3 max-w-lg text-sm text-muted-foreground italic">No bio yet — tap Edit Profile to add one.</p>
                 )}
 
-                {/* Fee highlight */}
                 <div className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-primary/5 px-3 py-1.5">
                   <TrendingUp className="h-3.5 w-3.5 text-primary" />
                   <span className="text-sm font-semibold text-foreground">৳{(tutor?.fee_expectation || 0).toLocaleString()}</span>
@@ -407,18 +501,22 @@ const TutorDashboard = () => {
           </div>
         </div>
 
-        {/* Content Tabs - Instagram style */}
+        {/* Content Tabs */}
         <div className="container py-6 px-4">
           <Tabs defaultValue="details">
-            <TabsList className="mb-6 w-full justify-start border-b border-border bg-transparent p-0">
-              <TabsTrigger value="details" className="gap-1.5 rounded-none border-b-2 border-transparent px-6 py-3 text-xs font-semibold uppercase tracking-wider data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:text-sm">
+            <TabsList className="mb-6 w-full justify-start border-b border-border bg-transparent p-0 overflow-x-auto">
+              <TabsTrigger value="details" className="gap-1.5 rounded-none border-b-2 border-transparent px-4 py-3 text-xs font-semibold uppercase tracking-wider data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:px-6 sm:text-sm">
                 <Grid3X3 className="h-3.5 w-3.5" /> Details
               </TabsTrigger>
-              <TabsTrigger value="requests" className="gap-1.5 rounded-none border-b-2 border-transparent px-6 py-3 text-xs font-semibold uppercase tracking-wider data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:text-sm">
+              <TabsTrigger value="requests" className="gap-1.5 rounded-none border-b-2 border-transparent px-4 py-3 text-xs font-semibold uppercase tracking-wider data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:px-6 sm:text-sm">
                 <Inbox className="h-3.5 w-3.5" /> Requests
                 {pendingCount > 0 && <span className="ml-1 rounded-full bg-destructive px-1.5 py-0.5 text-[10px] text-destructive-foreground">{pendingCount}</span>}
               </TabsTrigger>
-              <TabsTrigger value="reviews" className="gap-1.5 rounded-none border-b-2 border-transparent px-6 py-3 text-xs font-semibold uppercase tracking-wider data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:text-sm">
+              <TabsTrigger value="notifications" className="gap-1.5 rounded-none border-b-2 border-transparent px-4 py-3 text-xs font-semibold uppercase tracking-wider data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:px-6 sm:text-sm">
+                <Bell className="h-3.5 w-3.5" /> Notifications
+                {unreadNotifs > 0 && <span className="ml-1 rounded-full bg-destructive px-1.5 py-0.5 text-[10px] text-destructive-foreground">{unreadNotifs}</span>}
+              </TabsTrigger>
+              <TabsTrigger value="reviews" className="gap-1.5 rounded-none border-b-2 border-transparent px-4 py-3 text-xs font-semibold uppercase tracking-wider data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:px-6 sm:text-sm">
                 <Star className="h-3.5 w-3.5" /> Reviews
               </TabsTrigger>
             </TabsList>
@@ -426,8 +524,51 @@ const TutorDashboard = () => {
             {/* Details Tab */}
             <TabsContent value="details">
               <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+                {/* Demo Video Upload Card */}
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border-l-4 border-rose-500 bg-rose-50/50 dark:bg-rose-950/20 p-4 shadow-card sm:p-6 lg:col-span-2">
+                  <h3 className="font-display text-base font-semibold text-rose-700 dark:text-rose-400 flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-rose-500" /> Demo Class Video
+                    <Badge variant="outline" className="ml-2 text-[9px] border-rose-300 text-rose-600">Required</Badge>
+                  </h3>
+                  <p className="mt-1 text-xs text-muted-foreground">Upload a 5-minute demo class video (max 100MB). Students will watch this before deciding.</p>
+
+                  {tutor?.demo_video_url ? (
+                    <div className="mt-3 space-y-3">
+                      <video
+                        src={tutor.demo_video_url}
+                        controls
+                        className="w-full max-w-lg rounded-xl border border-border"
+                        style={{ maxHeight: 280 }}
+                      />
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => videoInputRef.current?.click()} className="gap-1.5 text-xs">
+                          <Upload className="h-3 w-3" /> Replace Video
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={handleDeleteVideo} className="gap-1.5 text-xs text-destructive">
+                          <Trash2 className="h-3 w-3" /> Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      onClick={() => videoInputRef.current?.click()}
+                      disabled={uploadingVideo}
+                      className="mt-3 gap-2 bg-rose-600 text-primary-foreground hover:bg-rose-700"
+                    >
+                      <Video className="h-4 w-4" />
+                      {uploadingVideo ? "Uploading..." : "Upload Demo Video"}
+                    </Button>
+                  )}
+                  {uploadingVideo && (
+                    <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-rose-500 border-t-transparent" />
+                      Uploading video...
+                    </div>
+                  )}
+                </motion.div>
+
                 {/* Subjects */}
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border-l-4 border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20 p-4 shadow-card sm:p-6">
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="rounded-2xl border-l-4 border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20 p-4 shadow-card sm:p-6">
                   <h3 className="font-display text-base font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-emerald-500" /> Subjects I Teach
                   </h3>
@@ -436,12 +577,12 @@ const TutorDashboard = () => {
                       <Badge key={s} className="rounded-full px-3 py-1 text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border-0">
                         <BookOpen className="mr-1 h-3 w-3" /> {s}
                       </Badge>
-                    )) : <p className="text-sm text-muted-foreground">No subjects added yet. Click Edit Profile to add.</p>}
+                    )) : <p className="text-sm text-muted-foreground">No subjects added yet.</p>}
                   </div>
                 </motion.div>
 
                 {/* Preferred Areas */}
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="rounded-2xl border-l-4 border-blue-500 bg-blue-50/50 dark:bg-blue-950/20 p-4 shadow-card sm:p-6">
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-2xl border-l-4 border-blue-500 bg-blue-50/50 dark:bg-blue-950/20 p-4 shadow-card sm:p-6">
                   <h3 className="font-display text-base font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-blue-500" /> Preferred Areas
                   </h3>
@@ -455,7 +596,7 @@ const TutorDashboard = () => {
                 </motion.div>
 
                 {/* Experience & Fee */}
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-2xl border-l-4 border-purple-500 bg-purple-50/50 dark:bg-purple-950/20 p-4 shadow-card sm:p-6">
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="rounded-2xl border-l-4 border-purple-500 bg-purple-50/50 dark:bg-purple-950/20 p-4 shadow-card sm:p-6">
                   <h3 className="font-display text-base font-semibold text-purple-700 dark:text-purple-400 flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-purple-500" /> Experience & Fee
                   </h3>
@@ -472,7 +613,7 @@ const TutorDashboard = () => {
                 </motion.div>
 
                 {/* Quick Stats */}
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="rounded-2xl border-l-4 border-amber-500 bg-amber-50/50 dark:bg-amber-950/20 p-4 shadow-card sm:p-6">
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="rounded-2xl border-l-4 border-amber-500 bg-amber-50/50 dark:bg-amber-950/20 p-4 shadow-card sm:p-6">
                   <h3 className="font-display text-base font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-amber-500" /> Performance
                   </h3>
@@ -547,10 +688,71 @@ const TutorDashboard = () => {
               </div>
             </TabsContent>
 
+            {/* Notifications Tab */}
+            <TabsContent value="notifications">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-display text-base font-semibold text-foreground">Notifications</h3>
+                  {unreadNotifs > 0 && (
+                    <Button size="sm" variant="ghost" onClick={markAllRead} className="text-xs text-primary">
+                      Mark all read
+                    </Button>
+                  )}
+                </div>
+
+                {notifications.length === 0 ? (
+                  <div className="rounded-2xl border border-border bg-card p-12 text-center shadow-card">
+                    <Bell className="mx-auto h-10 w-10 text-muted-foreground" />
+                    <p className="mt-3 font-display text-base font-semibold text-foreground">No notifications yet</p>
+                    <p className="mt-1 text-sm text-muted-foreground">You'll be notified when students watch your demo or interact with you.</p>
+                  </div>
+                ) : (
+                  <ScrollArea className="max-h-[60vh]">
+                    <div className="space-y-2">
+                      {notifications.map(n => (
+                        <motion.div
+                          key={n.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          onClick={() => !n.is_read && markNotificationRead(n.id)}
+                          className={`cursor-pointer rounded-xl border p-3 transition-colors ${
+                            n.is_read
+                              ? "border-border bg-card"
+                              : "border-primary/30 bg-primary/5"
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className={`mt-0.5 flex h-8 w-8 items-center justify-center rounded-full ${
+                              n.type === "demo_watch" ? "bg-rose-100 dark:bg-rose-900/40" :
+                              n.type === "demo_rating" ? "bg-amber-100 dark:bg-amber-900/40" :
+                              "bg-primary/10"
+                            }`}>
+                              {n.type === "demo_watch" ? <Video className="h-4 w-4 text-rose-600" /> :
+                               n.type === "demo_rating" ? <Star className="h-4 w-4 text-amber-600" /> :
+                               <Bell className="h-4 w-4 text-primary" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <p className="text-sm font-semibold text-foreground">{n.title}</p>
+                                {!n.is_read && <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0" />}
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-0.5">{n.message}</p>
+                              <p className="text-[10px] text-muted-foreground/70 mt-1">
+                                {new Date(n.created_at).toLocaleString()}
+                              </p>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                )}
+              </div>
+            </TabsContent>
+
             {/* Reviews Tab */}
             <TabsContent value="reviews">
               <div className="space-y-4">
-                {/* Rating Summary */}
                 <div className="rounded-2xl border border-border bg-card p-6 shadow-card">
                   <div className="flex items-center gap-6">
                     <div className="text-center">
@@ -580,7 +782,6 @@ const TutorDashboard = () => {
                   </div>
                 </div>
 
-                {/* Review List */}
                 {reviews.length > 0 ? (
                   reviews.map(r => (
                     <motion.div key={r.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}

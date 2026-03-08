@@ -6,7 +6,7 @@ import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, MessageCircle, Check, CheckCheck, X, ArrowLeft, Reply, Smile, Search } from "lucide-react";
+import { Send, MessageCircle, Check, CheckCheck, X, ArrowLeft, Reply, Smile, Search, Video } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
@@ -479,6 +479,21 @@ const Messages = () => {
                           <X className="h-3.5 w-3.5" /> Reject
                         </Button>
                       </div>
+                    )}
+                    {role === "student" && selectedRequest.status === "accepted" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5 text-xs h-8 border-rose-300 text-rose-600 hover:bg-rose-50 dark:border-rose-700 dark:text-rose-400 dark:hover:bg-rose-950/30"
+                        onClick={() => {
+                          supabase.from("tutor_profiles").select("id").eq("user_id", selectedRequest.tutor_id).single().then(({ data }) => {
+                            if (data) window.location.href = `/tutor/${data.id}`;
+                            else toast.error("Tutor profile not found");
+                          });
+                        }}
+                      >
+                        <Video className="h-3.5 w-3.5" /> Request Demo
+                      </Button>
                     )}
                   </div>
 

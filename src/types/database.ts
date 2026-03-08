@@ -103,3 +103,42 @@ export interface Report {
   admin_response: string | null;
   created_at: string;
 }
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  title: string;
+  message: string;
+  type: string;
+  is_read: boolean;
+  metadata: Record<string, any>;
+  created_at: string;
+}
+
+export interface DemoVideoView {
+  id: string;
+  tutor_id: string;
+  student_id: string;
+  watched_at: string;
+  completed: boolean;
+  rating: number | null;
+  comment: string | null;
+  created_at: string;
+}
+
+// Profile completion helper
+export function getProfileCompletion(tutor: TutorProfile | null): { percentage: number; missing: string[] } {
+  if (!tutor) return { percentage: 0, missing: ['Everything'] };
+  const fields: { key: string; label: string; check: () => boolean }[] = [
+    { key: 'photo', label: 'Profile Photo', check: () => !!tutor.photo_url },
+    { key: 'bio', label: 'Bio / About', check: () => !!tutor.bio && tutor.bio.trim().length > 0 },
+    { key: 'subjects', label: 'Subjects', check: () => tutor.subjects?.length > 0 },
+    { key: 'areas', label: 'Preferred Areas', check: () => tutor.preferred_areas?.length > 0 },
+    { key: 'fee', label: 'Fee Expectation', check: () => tutor.fee_expectation > 0 },
+    { key: 'experience', label: 'Experience', check: () => !!tutor.experience && tutor.experience.trim().length > 0 },
+    { key: 'demo_video', label: 'Demo Video', check: () => !!tutor.demo_video_url },
+  ];
+  const missing = fields.filter(f => !f.check()).map(f => f.label);
+  const filled = fields.length - missing.length;
+  return { percentage: Math.round((filled / fields.length) * 100), missing };
+}
