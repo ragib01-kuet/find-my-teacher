@@ -51,6 +51,7 @@ const TutorDetail = () => {
   const [demoRatingHover, setDemoRatingHover] = useState(0);
   const [demoComment, setDemoComment] = useState("");
   const [submittingDemoRating, setSubmittingDemoRating] = useState(false);
+  const [requestingDemo, setRequestingDemo] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
