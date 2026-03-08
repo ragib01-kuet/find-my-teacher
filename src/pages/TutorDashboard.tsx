@@ -32,6 +32,7 @@ const TutorDashboard = () => {
   const [requests, setRequests] = useState<(TuitionRequest & { student_name_resolved?: string })[]>([]);
   const [reviews, setReviews] = useState<(Review & { profile?: Profile })[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [demoViews, setDemoViews] = useState<{ id: string; student_name: string; watched_at: string; completed: boolean; rating: number | null; comment: string | null }[]>([]);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
