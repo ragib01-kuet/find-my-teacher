@@ -513,19 +513,20 @@ const TutorDetail = () => {
                       ) : !demoView ? (
                         <div className="text-center space-y-2 px-4">
                           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-foreground/20 backdrop-blur-sm border border-white/20">
-                            <Play className="h-6 w-6 text-white" />
+                            <MessageCircle className="h-6 w-6 text-white" />
                           </div>
-                          <p className="text-sm text-white font-semibold">Request Demo Class</p>
+                          <p className="text-sm text-white font-semibold">Request Demo from Chatbox</p>
                           <p className="text-xs text-white/70 max-w-[280px]">
-                            Request access to watch this tutor's demo class video.
+                            Express interest first, then once the tutor accepts, click "Request Demo" in the chatbox to unlock this video.
                           </p>
-                          <button
-                            onClick={handleRequestDemo}
-                            disabled={requestingDemo}
-                            className="inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-lg disabled:opacity-50"
-                          >
-                            <Video className="h-3.5 w-3.5" /> {requestingDemo ? "Requesting..." : "Request Demo"}
-                          </button>
+                          {role === "student" && (
+                            <Link
+                              to="/messages"
+                              className="inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-lg"
+                            >
+                              <MessageCircle className="h-3.5 w-3.5" /> Go to Messages
+                            </Link>
+                          )}
                         </div>
                       ) : (
                         <div className="text-center space-y-2">
