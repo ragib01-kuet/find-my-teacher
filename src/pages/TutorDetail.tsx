@@ -309,45 +309,62 @@ const TutorDetail = () => {
                 </div>
               </div>
 
-              {/* Demo Video Preview Card */}
-              {tutor.demo_video_url && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-                  className="mt-4 overflow-hidden rounded-2xl border border-border bg-card shadow-card"
-                >
-                  <div className="p-4">
-                    <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                      <Video className="h-4 w-4 text-rose-500" /> Demo Class
-                    </h3>
-                  </div>
-                  {/* Blurry preview */}
+              {/* Demo Video Preview Card - Always visible */}
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+                className="mt-4 overflow-hidden rounded-2xl border border-border bg-card shadow-card"
+              >
+                <div className="p-4 pb-2">
+                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <Video className="h-4 w-4 text-rose-500" /> Demo Class
+                  </h3>
+                </div>
+                {tutor.demo_video_url ? (
                   <div className="relative">
                     <video
                       src={tutor.demo_video_url}
-                      className="w-full h-40 object-cover"
-                      style={{ filter: !user ? "blur(12px)" : "none" }}
+                      className="w-full h-44 object-cover"
+                      style={{ filter: !user ? "blur(14px) brightness(0.7)" : "blur(6px) brightness(0.8)" }}
                       muted
                       preload="metadata"
                     />
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-foreground/30">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
                       {!user ? (
-                        <div className="text-center">
-                          <Lock className="mx-auto h-8 w-8 text-primary-foreground mb-2" />
-                          <Link to="/login" className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors">
-                            Sign in to watch
+                        <div className="text-center space-y-2">
+                          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-foreground/20 backdrop-blur-sm border border-white/20">
+                            <Lock className="h-6 w-6 text-white" />
+                          </div>
+                          <p className="text-xs text-white/80 font-medium">Sign in to watch this demo</p>
+                          <Link to="/login" className="inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-lg">
+                            <Lock className="h-3.5 w-3.5" /> Sign in to watch
                           </Link>
                         </div>
                       ) : (
-                        <button
-                          onClick={handleWatchDemo}
-                          className="flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-all hover:scale-105"
-                        >
-                          <Play className="h-4 w-4" /> Watch Demo Class
-                        </button>
+                        <div className="text-center space-y-2">
+                          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/90 backdrop-blur-sm shadow-lg">
+                            <Play className="h-6 w-6 text-primary-foreground ml-0.5" />
+                          </div>
+                          <button
+                            onClick={handleWatchDemo}
+                            className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-all hover:scale-105 shadow-lg"
+                          >
+                            <Play className="h-4 w-4" /> Watch Demo Class
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
-                </motion.div>
-              )}
+                ) : (
+                  <div className="px-4 pb-4">
+                    <div className="flex flex-col items-center justify-center rounded-xl bg-secondary/50 border border-dashed border-border py-8">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                        <Video className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <p className="mt-3 text-sm font-medium text-muted-foreground">No demo video yet</p>
+                      <p className="mt-1 text-xs text-muted-foreground/70">This tutor hasn't uploaded a demo class</p>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
             </motion.div>
 
             {/* Details */}
