@@ -159,10 +159,22 @@ const Messages = () => {
     };
   }, [selectedRequest?.id]);
 
-  // Scroll to bottom
+  // Scroll to bottom + mark unread messages as read
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+
+    if (!user || !selectedRequest || selectedRequest.status !== "accepted") return;
+    const unreadIds = messages
+      .filter((m) => m.sender_id !== user.id && !m.is_read)
+      .map((m) => m.id);
+    if (unreadIds.length > 0) {
+      supabase
+        .from("messages")
+        .update({ is_read: true } as any)
+        .in("id", unreadIds)
+        .then();
+    }
+  }, [messages, user?.id, selectedRequest?.id]);
 
   // Typing indicator via Realtime Presence
   useEffect(() => {
