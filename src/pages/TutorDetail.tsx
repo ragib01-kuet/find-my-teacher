@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -43,15 +43,8 @@ const TutorDetail = () => {
   const [reviewComment, setReviewComment] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
 
-  // Demo video state
-  const [showDemoVideo, setShowDemoVideo] = useState(false);
+  // Demo video state (only need demoView for access check)
   const [demoView, setDemoView] = useState<DemoVideoView | null>(null);
-  const [videoCompleted, setVideoCompleted] = useState(false);
-  const [demoRating, setDemoRating] = useState(0);
-  const [demoRatingHover, setDemoRatingHover] = useState(0);
-  const [demoComment, setDemoComment] = useState("");
-  const [submittingDemoRating, setSubmittingDemoRating] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     const fetchTutor = async () => {
