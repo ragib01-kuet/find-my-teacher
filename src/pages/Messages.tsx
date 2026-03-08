@@ -1,13 +1,12 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { TuitionRequest, Message as MessageType } from "@/types/database";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, MessageCircle, Check, X, ArrowLeft, Reply, Smile } from "lucide-react";
+import { Send, MessageCircle, Check, X, ArrowLeft, Reply, Smile, Search } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
@@ -26,10 +25,17 @@ interface EnrichedMessage extends MessageType {
   reply_to?: MessageType | null;
 }
 
+interface EnrichedRequest extends TuitionRequest {
+  other_name?: string;
+  other_avatar?: string;
+  last_message?: string;
+  unread_count?: number;
+}
+
 const Messages = () => {
   const { user, role, loading: authLoading } = useAuth();
-  const [requests, setRequests] = useState<(TuitionRequest & { other_name?: string })[]>([]);
-  const [selectedRequest, setSelectedRequest] = useState<TuitionRequest | null>(null);
+  const [requests, setRequests] = useState<EnrichedRequest[]>([]);
+  const [selectedRequest, setSelectedRequest] = useState<EnrichedRequest | null>(null);
   const [messages, setMessages] = useState<EnrichedMessage[]>([]);
   const [reactions, setReactions] = useState<MessageReaction[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -37,7 +43,9 @@ const Messages = () => {
   const [replyTo, setReplyTo] = useState<EnrichedMessage | null>(null);
   const [showEmojiFor, setShowEmojiFor] = useState<string | null>(null);
   const [showMobileChat, setShowMobileChat] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Fetch requests
   useEffect(() => {
@@ -56,10 +64,24 @@ const Messages = () => {
             const otherId = role === "tutor" ? req.student_id : req.tutor_id;
             const { data: profile } = await supabase
               .from("profiles")
-              .select("full_name")
+              .select("full_name, avatar_url")
               .eq("user_id", otherId)
               .single();
-            return { ...req, other_name: profile?.full_name || "Anonymous" };
+
+            // Get last message
+            const { data: lastMsg } = await supabase
+              .from("messages")
+              .select("content")
+              .eq("request_id", req.id)
+              .order("created_at", { ascending: false })
+              .limit(1);
+
+            return {
+              ...req,
+              other_name: profile?.full_name || "Anonymous",
+              other_avatar: profile?.avatar_url || undefined,
+              last_message: lastMsg?.[0]?.content || req.message || "No messages yet",
+            } as EnrichedRequest;
           })
         );
         setRequests(enriched);
@@ -79,7 +101,6 @@ const Messages = () => {
         .order("created_at", { ascending: true });
       if (data) {
         setMessages(data as EnrichedMessage[]);
-        // Fetch reactions for all messages
         const msgIds = data.map((m: any) => m.id);
         if (msgIds.length > 0) {
           const { data: rxns } = await supabase
@@ -92,7 +113,6 @@ const Messages = () => {
     };
     fetchMessages();
 
-    // Real-time messages
     const msgChannel = supabase
       .channel(`messages-${selectedRequest.id}`)
       .on("postgres_changes", {
@@ -105,7 +125,6 @@ const Messages = () => {
       })
       .subscribe();
 
-    // Real-time reactions
     const rxnChannel = supabase
       .channel(`reactions-${selectedRequest.id}`)
       .on("postgres_changes", {
@@ -125,12 +144,19 @@ const Messages = () => {
       supabase.removeChannel(msgChannel);
       supabase.removeChannel(rxnChannel);
     };
-  }, [selectedRequest]);
+  }, [selectedRequest?.id]);
 
   // Scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Focus input when chat opens
+  useEffect(() => {
+    if (selectedRequest?.status === "accepted") {
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [selectedRequest]);
 
   const handleSend = async () => {
     if (!newMessage.trim() || !selectedRequest || !user) return;
@@ -159,6 +185,7 @@ const Messages = () => {
     } else {
       setNewMessage("");
       setReplyTo(null);
+      inputRef.current?.focus();
     }
   };
 
@@ -189,7 +216,7 @@ const Messages = () => {
     } else {
       toast.success("Request accepted! You can now chat.");
       setRequests((prev) => prev.map((r) => (r.id === req.id ? { ...r, status: "accepted" } : r)));
-      if (selectedRequest?.id === req.id) setSelectedRequest({ ...req, status: "accepted" });
+      if (selectedRequest?.id === req.id) setSelectedRequest({ ...selectedRequest, status: "accepted" } as EnrichedRequest);
     }
   };
 
@@ -204,15 +231,16 @@ const Messages = () => {
     }
   };
 
-  const selectConversation = (req: TuitionRequest) => {
+  const selectConversation = (req: EnrichedRequest) => {
     setSelectedRequest(req);
     setShowMobileChat(true);
     setReplyTo(null);
+    setShowEmojiFor(null);
   };
 
   if (authLoading) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen bg-background">
         <Navbar />
         <div className="flex min-h-[60vh] items-center justify-center pt-16">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -225,9 +253,9 @@ const Messages = () => {
 
   const statusColor = (s: string) => {
     switch (s) {
-      case "accepted": return "bg-green-100 text-green-700";
-      case "pending": return "bg-yellow-100 text-yellow-700";
-      case "rejected": return "bg-red-100 text-red-700";
+      case "accepted": return "bg-green-500/10 text-green-600 border-green-500/20";
+      case "pending": return "bg-amber-500/10 text-amber-600 border-amber-500/20";
+      case "rejected": return "bg-red-500/10 text-red-600 border-red-500/20";
       default: return "bg-secondary text-secondary-foreground";
     }
   };
@@ -248,267 +276,328 @@ const Messages = () => {
     return messages.find((m) => m.id === replyToId) || null;
   };
 
-  // Chat area component
-  const ChatArea = () => (
-    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-card">
-      {selectedRequest ? (
-        <>
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-border p-3 sm:p-4">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setShowMobileChat(false)}
-                className="rounded-lg p-1 text-muted-foreground hover:bg-secondary lg:hidden"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </button>
-              <div>
-                <h3 className="font-display text-sm font-semibold text-foreground sm:text-base">
-                  {(selectedRequest as any).other_name}
-                </h3>
-                <p className="text-[10px] text-muted-foreground sm:text-xs">
-                  {selectedRequest.subject} • {selectedRequest.class_level}
-                </p>
-              </div>
-            </div>
-            {role === "tutor" && selectedRequest.status === "pending" && (
-              <div className="flex gap-2">
-                <Button size="sm" onClick={() => handleAcceptRequest(selectedRequest)} className="gap-1 bg-green-600 text-primary-foreground hover:bg-green-700 text-xs">
-                  <Check className="h-3 w-3" /> Accept
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => handleRejectRequest(selectedRequest)} className="gap-1 text-destructive text-xs">
-                  <X className="h-3 w-3" /> Reject
-                </Button>
-              </div>
-            )}
-          </div>
+  const getInitials = (name: string) => {
+    return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+  };
 
-          {/* Messages */}
-          <ScrollArea className="flex-1 p-3 sm:p-4">
-            {selectedRequest.status !== "accepted" ? (
-              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                {selectedRequest.status === "pending"
-                  ? "Waiting for acceptance to start chatting..."
-                  : "This conversation has been " + selectedRequest.status}
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {messages.map((msg) => {
-                  const isMine = msg.sender_id === user.id;
-                  const replyMsg = getReplyMessage(msg.reply_to_id);
-                  const msgReactions = getReactionsForMessage(msg.id);
-
-                  return (
-                    <motion.div
-                      key={msg.id}
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={`group/msg flex ${isMine ? "justify-end" : "justify-start"}`}
-                    >
-                      <div className="relative max-w-[80%] sm:max-w-[75%]">
-                        {/* Reply preview */}
-                        {replyMsg && (
-                          <div className={`mb-1 rounded-lg px-3 py-1.5 text-[10px] sm:text-xs border-l-2 ${
-                            isMine ? "border-primary-foreground/40 bg-primary/10 text-primary-foreground/70" : "border-muted-foreground/40 bg-secondary/80 text-muted-foreground"
-                          }`}>
-                            <span className="font-medium">
-                              {replyMsg.sender_id === user.id ? "You" : (selectedRequest as any).other_name}
-                            </span>
-                            <p className="truncate">{replyMsg.content}</p>
-                          </div>
-                        )}
-
-                        {/* Message bubble */}
-                        <div className={`rounded-2xl px-3.5 py-2 text-sm sm:px-4 sm:py-2.5 ${
-                          isMine
-                            ? "bg-coral-gradient text-primary-foreground rounded-br-md"
-                            : "bg-secondary text-foreground rounded-bl-md"
-                        }`}>
-                          {msg.content}
-                          <div className={`mt-0.5 text-[9px] sm:text-[10px] ${isMine ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
-                            {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                          </div>
-                        </div>
-
-                        {/* Reactions display */}
-                        {msgReactions.length > 0 && (
-                          <div className="mt-0.5 flex flex-wrap gap-1">
-                            {msgReactions.map((r) => (
-                              <button
-                                key={r.emoji}
-                                onClick={() => handleReact(msg.id, r.emoji)}
-                                className={`flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[10px] transition-colors ${
-                                  r.hasOwn ? "border-primary/30 bg-primary/10" : "border-border bg-card"
-                                }`}
-                              >
-                                {r.emoji} {r.count > 1 && <span>{r.count}</span>}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Hover actions */}
-                        <div className={`absolute top-0 hidden group-hover/msg:flex gap-1 ${
-                          isMine ? "-left-16" : "-right-16"
-                        }`}>
-                          <button
-                            onClick={() => setReplyTo(msg)}
-                            className="rounded-full bg-card p-1.5 shadow-sm border border-border hover:bg-secondary"
-                            title="Reply"
-                          >
-                            <Reply className="h-3 w-3 text-muted-foreground" />
-                          </button>
-                          <button
-                            onClick={() => setShowEmojiFor(showEmojiFor === msg.id ? null : msg.id)}
-                            className="rounded-full bg-card p-1.5 shadow-sm border border-border hover:bg-secondary"
-                            title="React"
-                          >
-                            <Smile className="h-3 w-3 text-muted-foreground" />
-                          </button>
-                        </div>
-
-                        {/* Emoji picker */}
-                        <AnimatePresence>
-                          {showEmojiFor === msg.id && (
-                            <motion.div
-                              initial={{ opacity: 0, scale: 0.9 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              exit={{ opacity: 0, scale: 0.9 }}
-                              className={`absolute z-10 flex gap-1 rounded-full border border-border bg-card px-2 py-1.5 shadow-elevated ${
-                                isMine ? "right-0 -top-10" : "left-0 -top-10"
-                              }`}
-                            >
-                              {EMOJI_LIST.map((emoji) => (
-                                <button
-                                  key={emoji}
-                                  onClick={() => handleReact(msg.id, emoji)}
-                                  className="text-base transition-transform hover:scale-125 sm:text-lg"
-                                >
-                                  {emoji}
-                                </button>
-                              ))}
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-                <div ref={messagesEndRef} />
-              </div>
-            )}
-          </ScrollArea>
-
-          {/* Reply indicator + Input */}
-          {selectedRequest.status === "accepted" && (
-            <div className="border-t border-border">
-              {/* Reply indicator */}
-              <AnimatePresence>
-                {replyTo && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="flex items-center gap-2 bg-secondary/50 px-4 py-2">
-                      <Reply className="h-3.5 w-3.5 text-muted-foreground" />
-                      <div className="flex-1 truncate text-xs text-muted-foreground">
-                        Replying to: {replyTo.content}
-                      </div>
-                      <button onClick={() => setReplyTo(null)} className="text-muted-foreground hover:text-foreground">
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-              <div className="p-3 sm:p-4">
-                <form
-                  onSubmit={(e) => { e.preventDefault(); handleSend(); }}
-                  className="flex gap-2"
-                >
-                  <Input
-                    placeholder="Type a message..."
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    className="flex-1 text-sm"
-                  />
-                  <Button
-                    type="submit"
-                    disabled={sending || !newMessage.trim()}
-                    className="bg-coral-gradient text-primary-foreground"
-                    size="sm"
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </form>
-                <p className="mt-1.5 text-[9px] text-muted-foreground sm:text-[10px]">
-                  ⚠️ Sharing phone numbers or contact info is not allowed.
-                </p>
-              </div>
-            </div>
-          )}
-        </>
-      ) : (
-        <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
-          <MessageCircle className="mb-3 h-10 w-10 sm:h-12 sm:w-12" />
-          <p className="text-sm">Select a conversation to start chatting</p>
-        </div>
-      )}
-    </div>
+  const filteredRequests = requests.filter((req) =>
+    !searchQuery || (req.other_name || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const formatTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    if (days === 0) return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    if (days === 1) return "Yesterday";
+    if (days < 7) return date.toLocaleDateString([], { weekday: "short" });
+    return date.toLocaleDateString([], { month: "short", day: "numeric" });
+  };
+
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-background">
       <Navbar />
       <div className="pt-16">
-        <div className="container py-4 px-4 sm:py-6">
-          <h1 className="mb-4 font-display text-xl font-bold text-foreground sm:mb-6 sm:text-2xl">
-            <MessageCircle className="mr-2 inline h-5 w-5 sm:h-6 sm:w-6" />
-            Messages
-          </h1>
+        <div className="mx-auto h-[calc(100vh-4rem)] max-w-6xl">
+          <div className="grid h-full lg:grid-cols-[340px_1fr]">
 
-          <div className="grid h-[calc(100vh-10rem)] gap-4 lg:grid-cols-3">
-            {/* Conversations List - hide on mobile when chat is open */}
-            <div className={`overflow-hidden rounded-2xl border border-border bg-card shadow-card lg:col-span-1 ${
-              showMobileChat ? "hidden lg:block" : ""
-            }`}>
-              <div className="border-b border-border p-3 sm:p-4">
-                <h2 className="font-display text-sm font-semibold text-foreground">Conversations</h2>
+            {/* ─── Sidebar ─── */}
+            <div className={`flex flex-col border-r border-border bg-card ${showMobileChat ? "hidden lg:flex" : "flex"}`}>
+              {/* Sidebar header */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                <h1 className="text-xl font-bold text-foreground">Chats</h1>
+                <MessageCircle className="h-5 w-5 text-muted-foreground" />
               </div>
-              <ScrollArea className="h-[calc(100%-3rem)]">
-                {requests.length === 0 ? (
-                  <div className="p-6 text-center text-sm text-muted-foreground">
-                    No conversations yet.
+
+              {/* Search */}
+              <div className="px-3 py-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Search conversations..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full rounded-full bg-secondary py-2 pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+              </div>
+
+              {/* Conversations list */}
+              <ScrollArea className="flex-1">
+                {filteredRequests.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                    <MessageCircle className="mb-3 h-10 w-10 opacity-40" />
+                    <p className="text-sm">No conversations yet</p>
                   </div>
                 ) : (
-                  requests.map((req) => (
+                  filteredRequests.map((req) => (
                     <button
                       key={req.id}
                       onClick={() => selectConversation(req)}
-                      className={`w-full border-b border-border p-3 text-left transition-colors hover:bg-secondary/50 sm:p-4 ${
+                      className={`flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-secondary/60 ${
                         selectedRequest?.id === req.id ? "bg-secondary" : ""
                       }`}
                     >
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-foreground">{(req as any).other_name}</span>
-                        <Badge className={`text-[10px] ${statusColor(req.status)}`}>
-                          {req.status}
-                        </Badge>
+                      {/* Avatar */}
+                      <div className="relative flex-shrink-0">
+                        {req.other_avatar ? (
+                          <img src={req.other_avatar} alt="" className="h-12 w-12 rounded-full object-cover" />
+                        ) : (
+                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary/80 to-primary text-sm font-semibold text-primary-foreground">
+                            {getInitials(req.other_name || "A")}
+                          </div>
+                        )}
+                        {req.status === "accepted" && (
+                          <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-card bg-green-500" />
+                        )}
                       </div>
-                      <p className="mt-1 truncate text-[10px] text-muted-foreground sm:text-xs">
-                        {req.subject} • {req.class_level}
-                      </p>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-semibold text-foreground truncate">{req.other_name}</span>
+                          <span className="text-[10px] text-muted-foreground flex-shrink-0 ml-2">
+                            {formatTime(req.updated_at)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between mt-0.5">
+                          <p className="truncate text-xs text-muted-foreground">{req.last_message}</p>
+                          <Badge variant="outline" className={`ml-2 flex-shrink-0 text-[9px] px-1.5 py-0 ${statusColor(req.status)}`}>
+                            {req.status}
+                          </Badge>
+                        </div>
+                      </div>
                     </button>
                   ))
                 )}
               </ScrollArea>
             </div>
 
-            {/* Chat Area - show full on mobile when selected */}
-            <div className={`lg:col-span-2 ${!showMobileChat ? "hidden lg:block" : ""}`}>
-              <ChatArea />
+            {/* ─── Chat Area ─── */}
+            <div className={`flex flex-col bg-background ${!showMobileChat ? "hidden lg:flex" : "flex"}`}>
+              {selectedRequest ? (
+                <>
+                  {/* Chat header */}
+                  <div className="flex items-center gap-3 border-b border-border bg-card px-4 py-3">
+                    <button
+                      onClick={() => setShowMobileChat(false)}
+                      className="rounded-lg p-1 text-muted-foreground hover:bg-secondary lg:hidden"
+                    >
+                      <ArrowLeft className="h-5 w-5" />
+                    </button>
+                    {selectedRequest.other_avatar ? (
+                      <img src={selectedRequest.other_avatar} alt="" className="h-10 w-10 rounded-full object-cover" />
+                    ) : (
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary/80 to-primary text-xs font-semibold text-primary-foreground">
+                        {getInitials(selectedRequest.other_name || "A")}
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <h3 className="text-sm font-semibold text-foreground">
+                        {selectedRequest.other_name}
+                      </h3>
+                      <p className="text-[11px] text-muted-foreground">
+                        {selectedRequest.subject} • {selectedRequest.class_level}
+                      </p>
+                    </div>
+                    {role === "tutor" && selectedRequest.status === "pending" && (
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={() => handleAcceptRequest(selectedRequest)} className="gap-1 bg-green-600 hover:bg-green-700 text-xs h-8">
+                          <Check className="h-3.5 w-3.5" /> Accept
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => handleRejectRequest(selectedRequest)} className="gap-1 text-destructive text-xs h-8">
+                          <X className="h-3.5 w-3.5" /> Reject
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Messages area */}
+                  <ScrollArea className="flex-1 px-4 py-3">
+                    {selectedRequest.status !== "accepted" ? (
+                      <div className="flex h-full flex-col items-center justify-center py-20 text-muted-foreground">
+                        <div className="mb-4 rounded-full bg-secondary p-4">
+                          <MessageCircle className="h-8 w-8 opacity-50" />
+                        </div>
+                        <p className="text-sm">
+                          {selectedRequest.status === "pending"
+                            ? "Waiting for acceptance to start chatting..."
+                            : "This conversation has been " + selectedRequest.status}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        {messages.map((msg) => {
+                          const isMine = msg.sender_id === user.id;
+                          const replyMsg = getReplyMessage(msg.reply_to_id);
+                          const msgReactions = getReactionsForMessage(msg.id);
+
+                          return (
+                            <motion.div
+                              key={msg.id}
+                              initial={{ opacity: 0, y: 8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.15 }}
+                              className={`group/msg flex ${isMine ? "justify-end" : "justify-start"}`}
+                            >
+                              <div className="relative max-w-[70%]">
+                                {/* Reply preview */}
+                                {replyMsg && (
+                                  <div className={`mb-0.5 rounded-xl px-3 py-1.5 text-[11px] ${
+                                    isMine
+                                      ? "bg-primary/15 text-foreground/70 rounded-br-sm"
+                                      : "bg-secondary text-muted-foreground rounded-bl-sm"
+                                  }`}>
+                                    <span className="font-semibold text-[10px]">
+                                      {replyMsg.sender_id === user.id ? "You" : selectedRequest.other_name}
+                                    </span>
+                                    <p className="truncate">{replyMsg.content}</p>
+                                  </div>
+                                )}
+
+                                {/* Bubble */}
+                                <div className={`rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed ${
+                                  isMine
+                                    ? "bg-primary text-primary-foreground rounded-br-md"
+                                    : "bg-secondary text-foreground rounded-bl-md"
+                                }`}>
+                                  {msg.content}
+                                  <div className={`mt-0.5 text-[10px] ${isMine ? "text-primary-foreground/50" : "text-muted-foreground/70"}`}>
+                                    {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                  </div>
+                                </div>
+
+                                {/* Reactions */}
+                                {msgReactions.length > 0 && (
+                                  <div className={`mt-0.5 flex flex-wrap gap-0.5 ${isMine ? "justify-end" : "justify-start"}`}>
+                                    {msgReactions.map((r) => (
+                                      <button
+                                        key={r.emoji}
+                                        onClick={() => handleReact(msg.id, r.emoji)}
+                                        className={`flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[10px] transition-colors ${
+                                          r.hasOwn ? "border-primary/40 bg-primary/10" : "border-border bg-card"
+                                        }`}
+                                      >
+                                        {r.emoji} {r.count > 1 && <span>{r.count}</span>}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {/* Hover actions */}
+                                <div className={`absolute top-1 hidden group-hover/msg:flex gap-0.5 ${
+                                  isMine ? "-left-14" : "-right-14"
+                                }`}>
+                                  <button
+                                    onClick={() => { setReplyTo(msg); inputRef.current?.focus(); }}
+                                    className="rounded-full bg-card p-1.5 shadow-sm border border-border hover:bg-secondary transition-colors"
+                                  >
+                                    <Reply className="h-3 w-3 text-muted-foreground" />
+                                  </button>
+                                  <button
+                                    onClick={() => setShowEmojiFor(showEmojiFor === msg.id ? null : msg.id)}
+                                    className="rounded-full bg-card p-1.5 shadow-sm border border-border hover:bg-secondary transition-colors"
+                                  >
+                                    <Smile className="h-3 w-3 text-muted-foreground" />
+                                  </button>
+                                </div>
+
+                                {/* Emoji picker */}
+                                <AnimatePresence>
+                                  {showEmojiFor === msg.id && (
+                                    <motion.div
+                                      initial={{ opacity: 0, scale: 0.9 }}
+                                      animate={{ opacity: 1, scale: 1 }}
+                                      exit={{ opacity: 0, scale: 0.9 }}
+                                      className={`absolute z-10 flex gap-1 rounded-full border border-border bg-card px-2 py-1 shadow-lg ${
+                                        isMine ? "right-0 -top-9" : "left-0 -top-9"
+                                      }`}
+                                    >
+                                      {EMOJI_LIST.map((emoji) => (
+                                        <button
+                                          key={emoji}
+                                          onClick={() => handleReact(msg.id, emoji)}
+                                          className="text-base transition-transform hover:scale-125"
+                                        >
+                                          {emoji}
+                                        </button>
+                                      ))}
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
+                              </div>
+                            </motion.div>
+                          );
+                        })}
+                        <div ref={messagesEndRef} />
+                      </div>
+                    )}
+                  </ScrollArea>
+
+                  {/* Input area */}
+                  {selectedRequest.status === "accepted" && (
+                    <div className="border-t border-border bg-card">
+                      <AnimatePresence>
+                        {replyTo && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="flex items-center gap-2 bg-secondary/50 px-4 py-2 border-l-2 border-primary">
+                              <Reply className="h-3.5 w-3.5 text-primary" />
+                              <div className="flex-1 truncate text-xs text-muted-foreground">
+                                <span className="font-medium text-foreground">
+                                  {replyTo.sender_id === user.id ? "You" : selectedRequest.other_name}
+                                </span>
+                                <p className="truncate">{replyTo.content}</p>
+                              </div>
+                              <button onClick={() => setReplyTo(null)} className="text-muted-foreground hover:text-foreground p-0.5">
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                      <form
+                        onSubmit={(e) => { e.preventDefault(); handleSend(); }}
+                        className="flex items-center gap-2 px-3 py-2.5"
+                      >
+                        <input
+                          ref={inputRef}
+                          type="text"
+                          placeholder="Type a message..."
+                          value={newMessage}
+                          onChange={(e) => setNewMessage(e.target.value)}
+                          className="flex-1 rounded-full bg-secondary px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/30 transition-shadow"
+                        />
+                        <Button
+                          type="submit"
+                          disabled={sending || !newMessage.trim()}
+                          size="icon"
+                          className="h-10 w-10 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 flex-shrink-0"
+                        >
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      </form>
+                      <p className="px-4 pb-2 text-[9px] text-muted-foreground/60">
+                        ⚠️ Sharing phone numbers or contact info is not allowed.
+                      </p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
+                  <div className="mb-4 rounded-full bg-secondary p-6">
+                    <MessageCircle className="h-12 w-12 opacity-40" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-foreground mb-1">Your Messages</h3>
+                  <p className="text-sm">Select a conversation to start chatting</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
