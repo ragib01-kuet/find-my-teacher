@@ -532,8 +532,13 @@ const Messages = () => {
                                     : "bg-secondary text-foreground rounded-bl-md"
                                 }`}>
                                   {msg.content}
-                                  <div className={`mt-0.5 text-[10px] ${isMine ? "text-primary-foreground/50" : "text-muted-foreground/70"}`}>
-                                    {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                  <div className={`mt-0.5 flex items-center justify-end gap-1 text-[10px] ${isMine ? "text-primary-foreground/50" : "text-muted-foreground/70"}`}>
+                                    <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                                    {isMine && (
+                                      msg.is_read
+                                        ? <CheckCheck className="h-3.5 w-3.5 text-blue-400" />
+                                        : <Check className="h-3.5 w-3.5" />
+                                    )}
                                   </div>
                                 </div>
 
