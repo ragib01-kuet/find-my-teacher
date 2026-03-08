@@ -714,7 +714,81 @@ const TutorDashboard = () => {
             </motion.div>
           )}
 
-          {activeTab === "reviews" && (
+          {activeTab === "demo_views" && (
+            <motion.div key="demo_views" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}
+              className="px-4 py-4 sm:px-6">
+              <h2 className="font-display text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+                <Eye className="h-5 w-5 text-rose-500" /> Demo Video Viewers
+              </h2>
+
+              {/* Summary */}
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                {[
+                  { label: "Total Views", value: demoViews.length, color: "text-blue-500" },
+                  { label: "Completed", value: demoViews.filter(d => d.completed).length, color: "text-emerald-500" },
+                  { label: "Avg Rating", value: (() => { const rated = demoViews.filter(d => d.rating); return rated.length > 0 ? (rated.reduce((s, d) => s + (d.rating || 0), 0) / rated.length).toFixed(1) : "—"; })(), color: "text-amber-500" },
+                ].map(stat => (
+                  <div key={stat.label} className="rounded-2xl border border-border bg-card p-3 text-center shadow-card">
+                    <p className={`font-display text-xl font-bold ${stat.color}`}>{stat.value}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{stat.label}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Viewer Cards */}
+              <div className="space-y-3">
+                {demoViews.length > 0 ? (
+                  demoViews.map(v => (
+                    <motion.div key={v.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
+                      className="rounded-2xl border border-border bg-card p-4 shadow-card">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-100 dark:bg-rose-900/40 text-xs font-bold text-rose-700">
+                            {v.student_name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <span className="text-sm font-medium text-foreground">{v.student_name}</span>
+                            <p className="text-[10px] text-muted-foreground">
+                              {new Date(v.watched_at).toLocaleDateString()} • {new Date(v.watched_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {v.completed ? (
+                            <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border-0 text-[10px]">
+                              Watched
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border-0 text-[10px]">
+                              <Clock className="h-2.5 w-2.5 mr-0.5" /> Watching
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      {v.rating && (
+                        <div className="mt-3 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30 p-3">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            {[1, 2, 3, 4, 5].map(s => (
+                              <Star key={s} className={`h-3.5 w-3.5 ${s <= v.rating! ? "fill-amber-400 text-amber-400" : "text-border"}`} />
+                            ))}
+                            <span className="ml-1 text-xs font-medium text-amber-600">{v.rating}/5</span>
+                          </div>
+                          {v.comment && <p className="text-xs text-muted-foreground leading-relaxed">"{v.comment}"</p>}
+                        </div>
+                      )}
+                    </motion.div>
+                  ))
+                ) : (
+                  <div className="rounded-2xl border border-border bg-card p-12 text-center shadow-card">
+                    <Eye className="mx-auto h-10 w-10 text-muted-foreground" />
+                    <p className="mt-3 font-display text-base font-semibold text-foreground">No demo views yet</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Students will appear here after watching your demo video.</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+
             <motion.div key="reviews" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}
               className="px-4 py-4 sm:px-6">
               <h2 className="font-display text-lg font-bold text-foreground mb-4">Reviews & Ratings</h2>
