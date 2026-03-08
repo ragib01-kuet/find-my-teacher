@@ -575,6 +575,25 @@ const Messages = () => {
                             </motion.div>
                           );
                         })}
+                        {/* Typing indicator */}
+                        <AnimatePresence>
+                          {otherTyping && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: 8 }}
+                              className="flex justify-start"
+                            >
+                              <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-md bg-secondary px-4 py-2.5">
+                                <div className="flex gap-1">
+                                  <span className="h-2 w-2 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:0ms]" />
+                                  <span className="h-2 w-2 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:150ms]" />
+                                  <span className="h-2 w-2 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:300ms]" />
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                         <div ref={messagesEndRef} />
                       </div>
                     )}
