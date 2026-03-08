@@ -86,8 +86,6 @@ const TutorDetail = () => {
       .then(({ data }) => {
         if (data) {
           setDemoView(data as DemoVideoView);
-          setVideoCompleted(data.completed);
-          if (data.rating) setDemoRating(data.rating);
         }
       });
   }, [user?.id, tutor?.user_id]);
