@@ -86,13 +86,18 @@ const Navbar = () => {
             <Link
               key={link.to}
               to={link.to}
-              className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              className={`relative rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
                 location.pathname === link.to
                   ? "bg-secondary text-foreground"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {link.label}
+              {link.label === "Messages" && unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
             </Link>
           ))}
         </div>
