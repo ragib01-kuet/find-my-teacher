@@ -44,6 +44,9 @@ const Messages = () => {
   const [showEmojiFor, setShowEmojiFor] = useState<string | null>(null);
   const [showMobileChat, setShowMobileChat] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [otherTyping, setOtherTyping] = useState(false);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const presenceChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
