@@ -6,7 +6,7 @@ import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, MessageCircle, Check, X, ArrowLeft, Reply, Smile, Search } from "lucide-react";
+import { Send, MessageCircle, Check, CheckCheck, X, ArrowLeft, Reply, Smile, Search } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
@@ -126,6 +126,16 @@ const Messages = () => {
       }, (payload) => {
         setMessages((prev) => [...prev, payload.new as EnrichedMessage]);
       })
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "messages",
+        filter: `request_id=eq.${selectedRequest.id}`,
+      }, (payload) => {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === (payload.new as any).id ? { ...m, ...(payload.new as any) } : m))
+        );
+      })
       .subscribe();
 
     const rxnChannel = supabase
@@ -149,10 +159,22 @@ const Messages = () => {
     };
   }, [selectedRequest?.id]);
 
-  // Scroll to bottom
+  // Scroll to bottom + mark unread messages as read
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+
+    if (!user || !selectedRequest || selectedRequest.status !== "accepted") return;
+    const unreadIds = messages
+      .filter((m) => m.sender_id !== user.id && !m.is_read)
+      .map((m) => m.id);
+    if (unreadIds.length > 0) {
+      supabase
+        .from("messages")
+        .update({ is_read: true } as any)
+        .in("id", unreadIds)
+        .then();
+    }
+  }, [messages, user?.id, selectedRequest?.id]);
 
   // Typing indicator via Realtime Presence
   useEffect(() => {
@@ -510,8 +532,13 @@ const Messages = () => {
                                     : "bg-secondary text-foreground rounded-bl-md"
                                 }`}>
                                   {msg.content}
-                                  <div className={`mt-0.5 text-[10px] ${isMine ? "text-primary-foreground/50" : "text-muted-foreground/70"}`}>
-                                    {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                  <div className={`mt-0.5 flex items-center justify-end gap-1 text-[10px] ${isMine ? "text-primary-foreground/50" : "text-muted-foreground/70"}`}>
+                                    <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                                    {isMine && (
+                                      msg.is_read
+                                        ? <CheckCheck className="h-3.5 w-3.5 text-blue-400" />
+                                        : <Check className="h-3.5 w-3.5" />
+                                    )}
                                   </div>
                                 </div>
 
