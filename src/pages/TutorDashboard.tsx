@@ -97,6 +97,20 @@ const TutorDashboard = () => {
         .order("created_at", { ascending: false }).limit(50);
       if (notifs) setNotifications(notifs as Notification[]);
 
+      // Fetch demo video views
+      const { data: dv } = await supabase
+        .from("demo_video_views").select("*").eq("tutor_id", user.id)
+        .order("watched_at", { ascending: false });
+      if (dv) {
+        const enrichedDv = await Promise.all(
+          (dv as any[]).map(async (v) => {
+            const { data: sp } = await supabase.from("profiles").select("full_name").eq("user_id", v.student_id).single();
+            return { id: v.id, student_name: sp?.full_name || "Unknown", watched_at: v.watched_at, completed: v.completed, rating: v.rating, comment: v.comment };
+          })
+        );
+        setDemoViews(enrichedDv);
+      }
+
       setLoading(false);
     };
     fetchData();
