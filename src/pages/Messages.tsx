@@ -531,6 +531,92 @@ const Messages = () => {
                         <Video className="h-3.5 w-3.5" /> Request Demo
                       </Button>
                     )}
+                    {role === "student" && selectedRequest.status === "accepted" && (
+                      <Button
+                        size="sm"
+                        className="gap-1.5 text-xs h-8 bg-emerald-600 hover:bg-emerald-700 text-white"
+                        onClick={async () => {
+                          // Check if a deal already exists for this request
+                          const { data: existingDeal } = await supabase
+                            .from("deals")
+                            .select("id, status")
+                            .eq("request_id", selectedRequest.id)
+                            .maybeSingle();
+
+                          if (existingDeal) {
+                            toast.info(`Deal already ${existingDeal.status === "pending_admin" ? "submitted and awaiting admin approval" : existingDeal.status}.`);
+                            return;
+                          }
+
+                          // Create the deal
+                          const { error } = await supabase.from("deals").insert({
+                            request_id: selectedRequest.id,
+                            tutor_id: selectedRequest.tutor_id,
+                            student_id: user.id,
+                            status: "pending_admin",
+                          } as any);
+
+                          if (error) {
+                            toast.error("Failed to submit deal request.");
+                            return;
+                          }
+
+                          // Get student name
+                          const { data: profile } = await supabase
+                            .from("profiles")
+                            .select("full_name")
+                            .eq("user_id", user.id)
+                            .single();
+                          const studentName = profile?.full_name || "A student";
+
+                          // Get tutor name
+                          const { data: tutorProfile } = await supabase
+                            .from("profiles")
+                            .select("full_name")
+                            .eq("user_id", selectedRequest.tutor_id)
+                            .single();
+                          const tutorName = tutorProfile?.full_name || "a tutor";
+
+                          // Notify all admins
+                          const { data: adminRoles } = await supabase
+                            .from("user_roles")
+                            .select("user_id")
+                            .eq("role", "admin");
+
+                          if (adminRoles) {
+                            await Promise.all(
+                              adminRoles.map((admin) =>
+                                supabase.from("notifications").insert({
+                                  user_id: admin.user_id,
+                                  title: "Deal Finalization Request",
+                                  message: `${studentName} wants to finalize a deal with ${tutorName} for ${selectedRequest.subject || "tuition"}.`,
+                                  type: "deal_request",
+                                  metadata: {
+                                    request_id: selectedRequest.id,
+                                    student_id: user.id,
+                                    tutor_id: selectedRequest.tutor_id,
+                                    student_name: studentName,
+                                    tutor_name: tutorName,
+                                  },
+                                } as any)
+                              )
+                            );
+                          }
+
+                          // Notify tutor
+                          await supabase.from("notifications").insert({
+                            user_id: selectedRequest.tutor_id,
+                            title: "Student Interested in Deal",
+                            message: `${studentName} is interested in finalizing a deal with you for ${selectedRequest.subject || "tuition"}. Waiting for admin approval.`,
+                            type: "deal_request",
+                            metadata: { student_id: user.id, student_name: studentName },
+                          } as any);
+
+                          toast.success("Interest submitted! Admin will review and approve the deal.", { duration: 5000 });
+                        }}
+                      >
+                        <Handshake className="h-3.5 w-3.5" /> Interested
+                      </Button>
                   </div>
 
                   {/* Messages area */}
