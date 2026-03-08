@@ -23,20 +23,20 @@ const Navbar = () => {
     }
   }, [navigate]);
 
-  const links = [
-    { to: "/", label: "Home" },
-    { to: "/discover", label: "Find Tutors" },
-    { to: "/how-it-works", label: "How It Works" },
-  ];
+  const links: { to: string; label: string }[] = [];
 
   if (user && role === "tutor") {
-    links.push({ to: "/my-profile", label: "My Profile" });
+    links.push({ to: "/my-profile", label: "Dashboard" });
+    links.push({ to: "/discover", label: "Find Tutors" });
     links.push({ to: "/messages", label: "Messages" });
   } else if (user && role === "student") {
     links.push({ to: "/dashboard", label: "Dashboard" });
+    links.push({ to: "/discover", label: "Find Tutors" });
     links.push({ to: "/messages", label: "Messages" });
-  } else if (user) {
-    links.push({ to: "/messages", label: "Messages" });
+  } else {
+    links.push({ to: "/", label: "Home" });
+    links.push({ to: "/discover", label: "Find Tutors" });
+    links.push({ to: "/how-it-works", label: "How It Works" });
   }
 
   return (
