@@ -486,9 +486,6 @@ const Messages = () => {
                         variant="outline"
                         className="gap-1.5 text-xs h-8 border-rose-300 text-rose-600 hover:bg-rose-50 dark:border-rose-700 dark:text-rose-400 dark:hover:bg-rose-950/30"
                         onClick={() => {
-                          window.open(`/tutor/${selectedRequest.tutor_id.replace(selectedRequest.tutor_id, '')}`, '_blank');
-                          // Navigate to tutor profile to watch demo - we need the tutor_profiles.id
-                          // Fetch tutor profile id and navigate
                           supabase.from("tutor_profiles").select("id").eq("user_id", selectedRequest.tutor_id).single().then(({ data }) => {
                             if (data) window.location.href = `/tutor/${data.id}`;
                             else toast.error("Tutor profile not found");
