@@ -126,6 +126,16 @@ const Messages = () => {
       }, (payload) => {
         setMessages((prev) => [...prev, payload.new as EnrichedMessage]);
       })
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "messages",
+        filter: `request_id=eq.${selectedRequest.id}`,
+      }, (payload) => {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === (payload.new as any).id ? { ...m, ...(payload.new as any) } : m))
+        );
+      })
       .subscribe();
 
     const rxnChannel = supabase
