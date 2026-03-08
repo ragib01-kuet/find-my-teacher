@@ -229,6 +229,8 @@ const Messages = () => {
     } else {
       setNewMessage("");
       setReplyTo(null);
+      broadcastTyping(false);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       inputRef.current?.focus();
     }
   };
