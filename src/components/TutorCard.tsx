@@ -55,7 +55,7 @@ const TutorCard = ({
             </div>
             <div className="flex items-center gap-1 rounded-full bg-background/20 px-2 py-0.5 backdrop-blur-sm sm:px-2.5 sm:py-1">
               <Star className="h-3 w-3 fill-gold text-gold sm:h-3.5 sm:w-3.5" />
-              <span className="text-xs font-semibold text-primary-foreground sm:text-sm">{rating}</span>
+              <span className="text-xs font-semibold text-primary-foreground sm:text-sm">{rating > 0 ? rating : "New"}</span>
             </div>
           </div>
         </div>
