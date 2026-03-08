@@ -157,71 +157,15 @@ const TutorDetail = () => {
     }
   };
 
-  const handleWatchDemo = async () => {
+  const handleWatchDemo = () => {
     if (!user || !tutor) return;
-
-    // Check if student has requested demo via chatbox
     if (!demoView) {
-      toast.error("You need to request a demo class from the chatbox first. Go to Messages, open a conversation with this tutor, and click 'Request Demo'.");
+      toast.error("You need to request a demo class from the chatbox first.");
       return;
     }
-
-    setShowDemoVideo(true);
-
-    // Notify tutor
-    const { data: profile } = await supabase.from("profiles").select("full_name").eq("user_id", user.id).single();
-    const studentName = profile?.full_name || "A student";
-
-    await supabase.from("notifications").insert({
-      user_id: tutor.user_id,
-      title: "Demo Video Viewed",
-      message: `${studentName} is watching your demo class video`,
-      type: "demo_watch",
-      metadata: { student_id: user.id, student_name: studentName },
-    } as any);
-  };
-
-  const handleVideoEnded = async () => {
-    setVideoCompleted(true);
-    if (!user || !tutor) return;
-    // Mark as completed
-    await supabase.from("demo_video_views")
-      .update({ completed: true } as any)
-      .eq("tutor_id", tutor.user_id)
-      .eq("student_id", user.id);
-  };
-
-  const handleSubmitDemoRating = async () => {
-    if (!user || !tutor) return;
-    if (demoRating === 0) { toast.error("Please select a star rating"); return; }
-    if (!demoComment.trim() || demoComment.trim().length < 20) {
-      toast.error("Please write a constructive comment (at least 20 characters). Example: 'The Newton's 3rd law topic was not clearly explained'");
-      return;
-    }
-    setSubmittingDemoRating(true);
-
-    const { error } = await supabase.from("demo_video_views")
-      .update({ rating: demoRating, comment: demoComment.trim() } as any)
-      .eq("tutor_id", tutor.user_id)
-      .eq("student_id", user.id);
-
-    if (!error) {
-      // Notify tutor about rating
-      const { data: profile } = await supabase.from("profiles").select("full_name").eq("user_id", user.id).single();
-      await supabase.from("notifications").insert({
-        user_id: tutor.user_id,
-        title: "Demo Class Rated",
-        message: `${profile?.full_name || "A student"} rated your demo class ${demoRating}/5 ⭐`,
-        type: "demo_rating",
-        metadata: { student_id: user.id, rating: demoRating, comment: demoComment.trim() },
-      } as any);
-
-      setDemoView(prev => prev ? { ...prev, rating: demoRating, comment: demoComment.trim() } : prev);
-      toast.success("Thank you for your feedback!");
-    } else {
-      toast.error("Failed to submit rating");
-    }
-    setSubmittingDemoRating(false);
+    // Redirect to student dashboard where the video player lives
+    toast.success("Redirecting to your dashboard to watch the demo...");
+    window.location.href = "/dashboard";
   };
 
   if (loading) {
