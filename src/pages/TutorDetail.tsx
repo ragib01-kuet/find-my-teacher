@@ -51,6 +51,7 @@ const TutorDetail = () => {
   const [demoRatingHover, setDemoRatingHover] = useState(0);
   const [demoComment, setDemoComment] = useState("");
   const [submittingDemoRating, setSubmittingDemoRating] = useState(false);
+  const [requestingDemo, setRequestingDemo] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -155,6 +156,40 @@ const TutorDetail = () => {
       }, ...prev]);
       setReviewRating(0); setReviewHover(0); setReviewComment("");
     }
+  };
+
+  const handleRequestDemo = async () => {
+    if (!user || !tutor) return;
+    setRequestingDemo(true);
+    try {
+      const { error } = await supabase.from("demo_video_views").insert({
+        tutor_id: tutor.user_id,
+        student_id: user.id,
+      });
+      if (error) {
+        toast.error("Failed to request demo: " + error.message);
+      } else {
+        // Notify tutor
+        const { data: profile } = await supabase.from("profiles").select("full_name").eq("user_id", user.id).single();
+        await supabase.from("notifications").insert({
+          user_id: tutor.user_id,
+          title: "Demo Class Requested",
+          message: `${profile?.full_name || "A student"} requested access to your demo class`,
+          type: "demo_request",
+          metadata: { student_id: user.id },
+        } as any);
+        // Refresh demo view
+        const { data } = await supabase.from("demo_video_views")
+          .select("*").eq("tutor_id", tutor.user_id).eq("student_id", user.id).maybeSingle();
+        if (data) {
+          setDemoView(data as DemoVideoView);
+        }
+        toast.success("Demo access granted! You can now watch the video.");
+      }
+    } catch (e) {
+      toast.error("Something went wrong");
+    }
+    setRequestingDemo(false);
   };
 
   const handleWatchDemo = async () => {
@@ -513,18 +548,19 @@ const TutorDetail = () => {
                       ) : !demoView ? (
                         <div className="text-center space-y-2 px-4">
                           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-foreground/20 backdrop-blur-sm border border-white/20">
-                            <MessageCircle className="h-6 w-6 text-white" />
+                            <Play className="h-6 w-6 text-white" />
                           </div>
-                          <p className="text-sm text-white font-semibold">Request Demo from Chatbox</p>
+                          <p className="text-sm text-white font-semibold">Request Demo Class</p>
                           <p className="text-xs text-white/70 max-w-[280px]">
-                            Send a message to this tutor first, then click "Request Demo" in the chatbox to unlock this video.
+                            Request access to watch this tutor's demo class video.
                           </p>
-                          <Link
-                            to="/messages"
-                            className="inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-lg"
+                          <button
+                            onClick={handleRequestDemo}
+                            disabled={requestingDemo}
+                            className="inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-lg disabled:opacity-50"
                           >
-                            <MessageCircle className="h-3.5 w-3.5" /> Go to Messages
-                          </Link>
+                            <Video className="h-3.5 w-3.5" /> {requestingDemo ? "Requesting..." : "Request Demo"}
+                          </button>
                         </div>
                       ) : (
                         <div className="text-center space-y-2">
