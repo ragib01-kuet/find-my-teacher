@@ -131,6 +131,32 @@ const AdminDashboard = () => {
       const { count: reqCount } = await supabase.from("tuition_requests").select("*", { count: "exact", head: true });
       const { count: dealCount } = await supabase.from("deals").select("*", { count: "exact", head: true });
       setStats({ tutors: tutorCount || 0, students: studentCount || 0, requests: reqCount || 0, deals: dealCount || 0 });
+
+      // Deals with enriched data
+      const { data: dealsData } = await supabase.from("deals").select("*").order("created_at", { ascending: false });
+      if (dealsData) {
+        const enrichedDeals = await Promise.all(
+          dealsData.map(async (deal: any) => {
+            const { data: sp } = await supabase.from("profiles").select("full_name").eq("user_id", deal.student_id).single();
+            const { data: tp } = await supabase.from("profiles").select("full_name").eq("user_id", deal.tutor_id).single();
+            const { data: tutorP } = await supabase.from("tutor_profiles").select("department, university_name").eq("user_id", deal.tutor_id).single();
+            const { data: req } = await supabase.from("tuition_requests").select("subject").eq("id", deal.request_id).single();
+            const { data: contract } = await supabase.from("contracts").select("*").eq("deal_id", deal.id).maybeSingle();
+            const sigCount = contract ? (await supabase.from("contract_signatures").select("id", { count: "exact", head: true }).eq("contract_id", contract.id)).count || 0 : 0;
+            return {
+              ...deal,
+              student_name: sp?.full_name || "Unknown",
+              tutor_name: tp?.full_name || "Unknown",
+              tutor_department: tutorP?.department || "",
+              tutor_university: (tutorP as any)?.university_name || "KUET",
+              subject: req?.subject || "N/A",
+              contract,
+              signature_count: sigCount,
+            };
+          })
+        );
+        setDeals(enrichedDeals);
+      }
     };
     fetchAll();
   }, [role]);
