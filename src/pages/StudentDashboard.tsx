@@ -140,14 +140,13 @@ const StudentDashboard = () => {
       metadata: { student_id: user.id, rating: demoRating, comment: demoComment.trim() },
     } as any);
 
-    toast.success("Thank you for your feedback! To watch again, request a new demo from the chatbox.");
-    setDemoAccess(prev => prev.filter(d => d.id !== activeDemo.id));
+    toast.success("Thank you for your feedback!");
     setActiveDemo(null);
     setSubmittingRating(false);
   };
 
-  const handleCloseDemo = async () => {
-    if (activeDemo && videoCompleted && demoRating === 0) {
+  const handleCloseDemo = () => {
+    // Allow closing anytime - feedback is optional
       toast.error("Please rate the demo before closing.");
       return;
     }
