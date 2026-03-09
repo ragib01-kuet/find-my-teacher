@@ -19,10 +19,11 @@ import {
 import {
   Shield, Users, CheckCircle, XCircle, Eye, AlertTriangle,
   MessageCircle, Ban, FileText, Trash2, GraduationCap, Heart, Zap, Phone,
-  Lock, Mail, ArrowRight,
+  Lock, Mail, ArrowRight, Handshake,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import ContractModal from "@/components/ContractModal";
 
 
 interface StudentInfo {
