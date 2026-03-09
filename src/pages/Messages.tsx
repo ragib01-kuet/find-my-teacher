@@ -585,7 +585,7 @@ const Messages = () => {
                           const contractText = `TUTORING AGREEMENT CONTRACT
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Platform: KUET Tuition Ecosystem
+Platform: FindMyTeacher
 Date: ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
 
 PARTIES:
