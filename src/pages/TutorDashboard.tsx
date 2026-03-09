@@ -305,7 +305,7 @@ const TutorDashboard = () => {
   const bottomTabs: { key: TabKey; label: string; icon: typeof LayoutDashboard; badge?: number }[] = [
     { key: "home", label: "Home", icon: LayoutDashboard },
     { key: "requests", label: "Requests", icon: Inbox, badge: pendingCount },
-    { key: "demo_views", label: "Demo", icon: Eye, badge: demoViews.filter(d => !d.completed).length || undefined },
+    { key: "contracts", label: "Contracts", icon: FileText, badge: contracts.filter(c => c.signature_count < 2).length || undefined },
     { key: "notifications", label: "Alerts", icon: Bell, badge: unreadNotifs },
     { key: "reviews", label: "Reviews", icon: Star },
   ];
