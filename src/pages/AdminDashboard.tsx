@@ -50,6 +50,9 @@ const AdminDashboard = () => {
   const [deals, setDeals] = useState<any[]>([]);
   const [selectedContract, setSelectedContract] = useState<any>(null);
   const [selectedClassroomCode, setSelectedClassroomCode] = useState<string | null>(null);
+  const [approvalPatterns, setApprovalPatterns] = useState<{ id: string; pattern: string; description: string | null; is_active: boolean; created_at: string }[]>([]);
+  const [newPattern, setNewPattern] = useState("");
+  const [newPatternDesc, setNewPatternDesc] = useState("");
 
   useEffect(() => {
     if (role !== "admin") return;
