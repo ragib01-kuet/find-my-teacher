@@ -113,6 +113,21 @@ const TutorDashboard = () => {
         setDemoViews(enrichedDv);
       }
 
+      // Contracts
+      const { data: contractsData } = await supabase
+        .from("contracts").select("*").eq("tutor_id", user.id).order("created_at", { ascending: false });
+      if (contractsData) {
+        const enrichedContracts = await Promise.all(
+          (contractsData as any[]).map(async (c) => {
+            const { data: sp } = await supabase.from("profiles").select("full_name").eq("user_id", c.student_id).single();
+            const { data: deal } = await supabase.from("deals").select("classroom_code, status").eq("id", c.deal_id).single();
+            const { count: sigCount } = await supabase.from("contract_signatures").select("id", { count: "exact", head: true }).eq("contract_id", c.id);
+            return { ...c, student_name: sp?.full_name || "Unknown", classroom_code: deal?.classroom_code, deal_status: deal?.status, signature_count: sigCount || 0 };
+          })
+        );
+        setContracts(enrichedContracts);
+      }
+
       setLoading(false);
     };
     fetchData();
