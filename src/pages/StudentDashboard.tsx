@@ -462,6 +462,12 @@ const StudentDashboard = () => {
         </div>
       </div>
       <Footer />
+      <ContractModal
+        open={!!selectedContract}
+        onOpenChange={() => setSelectedContract(null)}
+        contract={selectedContract}
+        classroomCode={selectedClassroomCode}
+      />
     </div>
   );
 };
