@@ -152,8 +152,7 @@ const TutorDetail = () => {
       toast.error("You need to request a demo class from the chatbox first.");
       return;
     }
-    // Redirect to student dashboard where the video player lives
-    toast.success("Redirecting to your dashboard to watch the demo...");
+    // Redirect to student dashboard
     window.location.href = "/dashboard";
   };
 

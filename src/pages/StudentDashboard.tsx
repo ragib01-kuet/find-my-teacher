@@ -147,14 +147,6 @@ const StudentDashboard = () => {
 
   const handleCloseDemo = () => {
     // Allow closing anytime - feedback is optional
-      toast.error("Please rate the demo before closing.");
-      return;
-    }
-    if (activeDemo && !videoCompleted) {
-      // If they close without finishing, keep access
-      setActiveDemo(null);
-      return;
-    }
     setActiveDemo(null);
   };
 
