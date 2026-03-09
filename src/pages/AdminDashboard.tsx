@@ -363,6 +363,9 @@ const AdminDashboard = () => {
               <TabsTrigger value="reports" className="gap-1 text-xs sm:gap-2 sm:text-sm">
                 <AlertTriangle className="h-3.5 w-3.5" /> Reports
               </TabsTrigger>
+              <TabsTrigger value="auto-approval" className="gap-1 text-xs sm:gap-2 sm:text-sm">
+                <Zap className="h-3.5 w-3.5" /> Auto Approval
+              </TabsTrigger>
             </TabsList>
 
             {/* Pending Tutors */}
