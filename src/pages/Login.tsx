@@ -28,6 +28,20 @@ const Login = () => {
   const [signupDepartment, setSignupDepartment] = useState("");
   const [signupUniversity, setSignupUniversity] = useState("");
   const [signupLoading, setSignupLoading] = useState(false);
+  const [autoApprovalPatterns, setAutoApprovalPatterns] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchPatterns = async () => {
+      const { data } = await supabase
+        .from("auto_approval_patterns")
+        .select("pattern")
+        .eq("is_active", true);
+      if (data) setAutoApprovalPatterns(data.map((p: any) => p.pattern));
+    };
+    fetchPatterns();
+  }, []);
+
+  const isAutoApprovedEmail = autoApprovalPatterns.some((p) => signupEmail.endsWith(p));
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
