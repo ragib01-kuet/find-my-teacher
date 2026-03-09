@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { TutorProfile, Profile, TuitionRequest, Review, Notification, getProfileCompletion } from "@/types/database";
+import ContractModal from "@/components/ContractModal";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
