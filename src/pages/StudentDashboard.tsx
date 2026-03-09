@@ -65,12 +65,11 @@ const StudentDashboard = () => {
         setRequests(enriched);
       }
 
-      // Fetch demo video access (not yet completed/consumed)
+      // Fetch demo video access (all, not just incomplete - allow multiple watches)
       const { data: demoViews } = await supabase
         .from("demo_video_views")
         .select("*")
-        .eq("student_id", user.id)
-        .eq("completed", false);
+        .eq("student_id", user.id);
 
       if (demoViews && demoViews.length > 0) {
         const demos = await Promise.all(
