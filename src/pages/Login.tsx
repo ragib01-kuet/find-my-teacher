@@ -28,8 +28,6 @@ const Login = () => {
   const [signupUniversity, setSignupUniversity] = useState("");
   const [signupLoading, setSignupLoading] = useState(false);
 
-  const isKuetEmail = signupEmail.endsWith("@stud.kuet.ac.bd");
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginLoading(true);
@@ -46,11 +44,11 @@ const Login = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!signupUniversity.trim()) {
-      toast.error("Please enter your university name.");
+      toast.error("Please enter your university/institution name.");
       return;
     }
     if (signupRole === "tutor" && !signupDepartment) {
-      toast.error("Please fill in your department.");
+      toast.error("Please fill in your department/subject expertise.");
       return;
     }
     setSignupLoading(true);
@@ -64,11 +62,7 @@ const Login = () => {
       toast.error(error.message);
     } else {
       if (signupRole === "tutor") {
-        if (isKuetEmail) {
-          toast.success("Account created & auto-approved! Redirecting to your dashboard.");
-        } else {
-          toast.success("Account created! Your profile is pending admin approval.");
-        }
+        toast.success("Account created! Your profile is pending admin approval.");
         navigate("/my-profile");
       } else {
         toast.success("Account created! Find your perfect tutor.");
@@ -90,10 +84,10 @@ const Login = () => {
             <GraduationCap className="h-7 w-7 text-primary-foreground" />
           </div>
           <h2 className="font-display text-3xl font-bold text-primary-foreground">
-            Welcome to KUET Tuition Ecosystem
+            Welcome to FindMyTeacher
           </h2>
           <p className="mt-4 text-primary-foreground/60">
-            Join the exclusive academic matching platform. Connect with verified KUET tutors securely and privately.
+            Join our online learning platform. Connect with verified tutors from anywhere — whether you're in a city or a remote village.
           </p>
         </motion.div>
       </div>
@@ -109,7 +103,7 @@ const Login = () => {
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-coral-gradient">
               <GraduationCap className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="font-display text-lg font-bold text-foreground">KUET Tuition</span>
+            <span className="font-display text-lg font-bold text-foreground">FindMyTeacher</span>
           </Link>
 
           <Tabs defaultValue="login" className="w-full">
@@ -128,7 +122,7 @@ const Login = () => {
                   <Label>Email</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input placeholder="you@kuet.ac.bd" className="pl-10" type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} required />
+                    <Input placeholder="you@example.com" className="pl-10" type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} required />
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -162,11 +156,8 @@ const Login = () => {
                   <Label>Email *</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input placeholder="you@stud.kuet.ac.bd" className="pl-10" type="email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} required />
+                    <Input placeholder="you@example.com" className="pl-10" type="email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} required />
                   </div>
-                  {signupRole === "tutor" && isKuetEmail && (
-                    <p className="text-xs text-green-600 mt-1">✅ KUET email detected — you'll be auto-approved!</p>
-                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Password *</Label>
@@ -183,10 +174,10 @@ const Login = () => {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>University Name *</Label>
+                  <Label>University / Institution *</Label>
                   <div className="relative">
                     <Building className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input placeholder="e.g., KUET" className="pl-10" value={signupUniversity} onChange={(e) => setSignupUniversity(e.target.value)} required />
+                    <Input placeholder="e.g., Dhaka University" className="pl-10" value={signupUniversity} onChange={(e) => setSignupUniversity(e.target.value)} required />
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -198,7 +189,7 @@ const Login = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       <RadioGroupItem value="tutor" id="tutor" />
-                      <Label htmlFor="tutor" className="cursor-pointer">KUET Tutor</Label>
+                      <Label htmlFor="tutor" className="cursor-pointer">Tutor</Label>
                     </div>
                   </RadioGroup>
                 </div>
@@ -207,17 +198,15 @@ const Login = () => {
                   <div className="space-y-3 rounded-xl border border-border bg-secondary/30 p-3">
                     <p className="text-xs font-medium text-foreground">Tutor Details</p>
                     <div className="space-y-1">
-                      <Label className="text-xs">Department *</Label>
+                      <Label className="text-xs">Department / Expertise *</Label>
                       <div className="relative">
                         <Building className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                        <Input placeholder="e.g., CSE" className="pl-9 text-sm" value={signupDepartment} onChange={(e) => setSignupDepartment(e.target.value)} required />
+                        <Input placeholder="e.g., Mathematics, Physics" className="pl-9 text-sm" value={signupDepartment} onChange={(e) => setSignupDepartment(e.target.value)} required />
                       </div>
                     </div>
-                    {!isKuetEmail && (
-                      <p className="text-xs text-muted-foreground">
-                        ⚠️ Non-KUET emails require admin approval before your profile becomes visible.
-                      </p>
-                    )}
+                    <p className="text-xs text-muted-foreground">
+                      ⚠️ All tutor profiles require admin approval before becoming visible.
+                    </p>
                   </div>
                 )}
 

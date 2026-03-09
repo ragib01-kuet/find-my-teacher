@@ -310,7 +310,7 @@ const AdminDashboard = () => {
             </div>
             <div>
               <h1 className="font-display text-xl font-bold text-foreground sm:text-2xl">Admin Dashboard</h1>
-              <p className="text-xs text-muted-foreground sm:text-sm">Manage the KUET Tuition Ecosystem</p>
+              <p className="text-xs text-muted-foreground sm:text-sm">Manage FindMyTeacher platform</p>
             </div>
           </div>
 

@@ -1,4 +1,4 @@
-import { ArrowRight, Shield, Users, Sparkles } from "lucide-react";
+import { ArrowRight, Shield, Wifi, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
@@ -28,24 +28,24 @@ const HeroSection = () => {
             className="mb-6 inline-flex items-center gap-2 rounded-full border border-coral/20 bg-coral/10 px-4 py-1.5"
           >
             <Sparkles className="h-4 w-4 text-coral" />
-            <span className="text-sm font-medium text-coral-light">Exclusive for KUET Students</span>
+            <span className="text-sm font-medium text-coral-light">Learn From Anywhere</span>
           </motion.div>
 
           <h1 className="font-display text-4xl font-bold leading-tight tracking-tight text-primary-foreground sm:text-5xl md:text-6xl lg:text-7xl">
-            Find Your Perfect
+            Quality Education
             <br />
-            <span className="text-gradient-coral">Academic Match</span>
+            <span className="text-gradient-coral">Knows No Distance</span>
           </h1>
 
           <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-primary-foreground/60 sm:text-lg">
-            A premium, trust-based tuition ecosystem exclusively for KUET. 
-            Verified tutors, anonymous matching, and admin-controlled quality.
+            Whether you're in a city or a remote village, connect with verified tutors and learn online. 
+            Education for everyone, everywhere.
           </p>
 
           <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
             <Link to="/discover">
               <Button size="lg" className="gap-2 bg-coral-gradient px-8 text-primary-foreground shadow-elevated hover:opacity-90">
-                Browse Tutors
+                Find a Tutor
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
@@ -55,7 +55,7 @@ const HeroSection = () => {
                 variant="outline"
                 className="border-primary-foreground/20 bg-primary-foreground/5 px-8 text-primary-foreground hover:bg-primary-foreground/10"
               >
-                Join as Tutor
+                Become a Tutor
               </Button>
             </Link>
           </div>
@@ -64,15 +64,15 @@ const HeroSection = () => {
           <div className="mt-14 flex flex-wrap items-center justify-center gap-8 text-primary-foreground/40">
             <div className="flex items-center gap-2">
               <Shield className="h-5 w-5" />
-              <span className="text-sm font-medium">Admin Verified</span>
+              <span className="text-sm font-medium">Verified Tutors</span>
             </div>
             <div className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              <span className="text-sm font-medium">KUET Exclusive</span>
+              <Wifi className="h-5 w-5" />
+              <span className="text-sm font-medium">100% Online</span>
             </div>
             <div className="flex items-center gap-2">
               <Sparkles className="h-5 w-5" />
-              <span className="text-sm font-medium">Anonymous Matching</span>
+              <span className="text-sm font-medium">Secure & Private</span>
             </div>
           </div>
         </motion.div>

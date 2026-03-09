@@ -595,7 +595,7 @@ PARTIES:
 SUBJECT: ${selectedRequest.subject || "General Tuition"}
 
 AGREEMENT:
-This contract hereby establishes a formal tutoring agreement between the above-named Student and Tutor, facilitated through the KUET Tuition Ecosystem platform.
+This contract hereby establishes a formal online tutoring agreement between the above-named Student and Tutor, facilitated through the FindMyTeacher platform.
 
 1. The Tutor agrees to provide quality tutoring services in the specified subject.
 2. The Student agrees to attend scheduled sessions and participate actively.

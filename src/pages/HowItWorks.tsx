@@ -9,7 +9,7 @@ const steps = [
   {
     icon: Search,
     title: "Browse Tutors",
-    desc: "Explore verified KUET tutor profiles. Filter by subject, area, and budget. No sign-in needed to browse.",
+    desc: "Explore verified tutor profiles. Filter by subject, budget, and availability. No sign-in needed to browse.",
   },
   {
     icon: Heart,
@@ -28,8 +28,8 @@ const steps = [
   },
   {
     icon: CheckCircle,
-    title: "Confirmed!",
-    desc: "Digital agreement generated. Contact details revealed. Your tuition journey begins.",
+    title: "Start Learning!",
+    desc: "Digital agreement generated. Classroom access unlocked. Your online learning journey begins.",
   },
 ];
 
@@ -48,7 +48,7 @@ const HowItWorks = () => {
               How It <span className="text-gradient-coral">Works</span>
             </h1>
             <p className="mt-4 text-lg text-muted-foreground">
-              A simple, secure 5-step process from discovery to confirmation.
+              A simple, secure 5-step process from discovery to online learning.
             </p>
           </motion.div>
 
