@@ -65,12 +65,11 @@ const StudentDashboard = () => {
         setRequests(enriched);
       }
 
-      // Fetch demo video access (not yet completed/consumed)
+      // Fetch demo video access (all, not just incomplete - allow multiple watches)
       const { data: demoViews } = await supabase
         .from("demo_video_views")
         .select("*")
-        .eq("student_id", user.id)
-        .eq("completed", false);
+        .eq("student_id", user.id);
 
       if (demoViews && demoViews.length > 0) {
         const demos = await Promise.all(
@@ -119,9 +118,10 @@ const StudentDashboard = () => {
 
   const handleSubmitDemoRating = async () => {
     if (!activeDemo || !user) return;
-    if (demoRating === 0) { toast.error("Please select a star rating"); return; }
-    if (!demoComment.trim() || demoComment.trim().length < 20) {
-      toast.error("Please write a constructive comment (at least 20 characters).");
+    // Rating is now optional
+    if (demoRating === 0 && !demoComment.trim()) {
+      // Just close without rating
+      setActiveDemo(null);
       return;
     }
     setSubmittingRating(true);
@@ -140,22 +140,13 @@ const StudentDashboard = () => {
       metadata: { student_id: user.id, rating: demoRating, comment: demoComment.trim() },
     } as any);
 
-    toast.success("Thank you for your feedback! To watch again, request a new demo from the chatbox.");
-    setDemoAccess(prev => prev.filter(d => d.id !== activeDemo.id));
+    toast.success("Thank you for your feedback!");
     setActiveDemo(null);
     setSubmittingRating(false);
   };
 
-  const handleCloseDemo = async () => {
-    if (activeDemo && videoCompleted && demoRating === 0) {
-      toast.error("Please rate the demo before closing.");
-      return;
-    }
-    if (activeDemo && !videoCompleted) {
-      // If they close without finishing, keep access
-      setActiveDemo(null);
-      return;
-    }
+  const handleCloseDemo = () => {
+    // Allow closing anytime - feedback is optional
     setActiveDemo(null);
   };
 

@@ -14,7 +14,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  ArrowLeft, BookOpen, MapPin, Star, Calendar, GraduationCap,
+  ArrowLeft, BookOpen, Star, Calendar, GraduationCap, Wifi,
   Heart, Shield, Send, Video, Lock, Play, MessageCircle,
 } from "lucide-react";
 import { motion } from "framer-motion";
@@ -33,7 +33,6 @@ const TutorDetail = () => {
   const [interestSubject, setInterestSubject] = useState("");
   const [interestClass, setInterestClass] = useState("");
   const [interestBudget, setInterestBudget] = useState("");
-  const [interestArea, setInterestArea] = useState("");
   const [interestName, setInterestName] = useState("");
   const [sending, setSending] = useState(false);
 
@@ -110,7 +109,6 @@ const TutorDetail = () => {
       subject: interestSubject,
       class_level: interestClass || null,
       budget: interestBudget ? parseInt(interestBudget) : null,
-      area: interestArea || null,
       student_name: interestName || null,
     });
     setSending(false);
@@ -118,7 +116,7 @@ const TutorDetail = () => {
     else {
       toast.success("Interest sent! The tutor will be notified.");
       setShowInterest(false);
-      setInterestMsg(""); setInterestSubject(""); setInterestClass(""); setInterestBudget(""); setInterestArea("");
+      setInterestMsg(""); setInterestSubject(""); setInterestClass(""); setInterestBudget("");
     }
   };
 
@@ -154,8 +152,7 @@ const TutorDetail = () => {
       toast.error("You need to request a demo class from the chatbox first.");
       return;
     }
-    // Redirect to student dashboard where the video player lives
-    toast.success("Redirecting to your dashboard to watch the demo...");
+    // Redirect to student dashboard
     window.location.href = "/dashboard";
   };
 
@@ -229,7 +226,7 @@ const TutorDetail = () => {
                       <Calendar className="h-3.5 w-3.5" /> {tutor.experience || "N/A"} experience
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <MapPin className="h-3.5 w-3.5" /> {tutor.preferred_areas?.join(", ") || "N/A"}
+                      <GraduationCap className="h-3.5 w-3.5" /> {(tutor as any).university_name || "KUET"}
                     </div>
                   </div>
                   <div className="mt-4 border-t border-border pt-3">
@@ -285,10 +282,6 @@ const TutorDetail = () => {
                         <div className="space-y-2">
                           <Label>Budget (৳/month)</Label>
                           <Input type="number" placeholder="e.g., 3000" value={interestBudget} onChange={(e) => setInterestBudget(e.target.value)} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Your Area</Label>
-                          <Input placeholder="e.g., Sonadanga" value={interestArea} onChange={(e) => setInterestArea(e.target.value)} />
                         </div>
                       </div>
                       <div className="space-y-2">

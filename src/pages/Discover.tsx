@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { getProfileCompletion } from "@/types/database";
 
 const allSubjects = ["Physics", "Mathematics", "Chemistry", "English", "ICT", "Biology", "Bangla", "Higher Math", "Accounting", "Economics", "General Math"];
 
@@ -20,6 +21,7 @@ interface DiscoverTutor {
   photo: string;
   department: string;
   session: string;
+  university_name: string;
   subjects: string[];
   areas: string[];
   fee: string;
@@ -49,17 +51,19 @@ const Discover = () => {
       }
 
       if (data) {
-        // Filter to only 100% complete profiles
+        // Filter to only 100% complete profiles (photo, bio, subjects, fee, experience, demo video, id card)
         const completeTutors = data.filter((t: any) => {
-          return (
-            !!t.photo_url &&
-            !!t.bio && t.bio.trim().length > 0 &&
-            t.subjects && t.subjects.length > 0 &&
-            t.preferred_areas && t.preferred_areas.length > 0 &&
-            t.fee_expectation > 0 &&
-            !!t.experience && t.experience.trim().length > 0 &&
-            !!t.demo_video_url
-          );
+          const mockTutor = {
+            photo_url: t.photo_url,
+            bio: t.bio,
+            subjects: t.subjects,
+            preferred_areas: t.preferred_areas,
+            fee_expectation: t.fee_expectation,
+            experience: t.experience,
+            demo_video_url: t.demo_video_url,
+            id_card_url: t.id_card_url,
+          } as any;
+          return getProfileCompletion(mockTutor).percentage === 100;
         });
 
         const enriched = await Promise.all(
@@ -70,12 +74,11 @@ const Discover = () => {
               .eq("user_id", t.user_id)
               .single();
 
-            // Fetch actual average rating from reviews
             const { data: reviewsData } = await supabase
               .from("reviews")
               .select("rating")
               .eq("tutor_id", t.user_id);
-            
+
             const avgRating = reviewsData && reviewsData.length > 0
               ? parseFloat((reviewsData.reduce((sum: number, r: any) => sum + r.rating, 0) / reviewsData.length).toFixed(1))
               : 0;
@@ -87,6 +90,7 @@ const Discover = () => {
               photo: t.photo_url || profile?.avatar_url || "",
               department: t.department,
               session: t.session,
+              university_name: t.university_name || "KUET",
               subjects: t.subjects || [],
               areas: t.preferred_areas || [],
               fee: t.fee_expectation?.toLocaleString() || "0",
@@ -104,9 +108,7 @@ const Discover = () => {
   }, []);
 
   const toggleSubject = (s: string) => {
-    setSelectedSubjects((prev) =>
-      prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
-    );
+    setSelectedSubjects((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
   };
 
   const handleDeleteTutor = async (tutorId: string, userId: string) => {
@@ -122,6 +124,7 @@ const Discover = () => {
       !search ||
       t.name.toLowerCase().includes(search.toLowerCase()) ||
       t.department.toLowerCase().includes(search.toLowerCase()) ||
+      (t.university_name || "").toLowerCase().includes(search.toLowerCase()) ||
       t.subjects.some((s) => s.toLowerCase().includes(search.toLowerCase()));
 
     const matchesSubjects =
@@ -148,7 +151,7 @@ const Discover = () => {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="Search by name, subject, or department..."
+                  placeholder="Search by name, subject, university, or department..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-10"
@@ -173,9 +176,7 @@ const Discover = () => {
                       key={s}
                       variant={selectedSubjects.includes(s) ? "default" : "outline"}
                       className={`cursor-pointer transition-colors text-xs sm:text-sm ${
-                        selectedSubjects.includes(s)
-                          ? "bg-coral-gradient text-primary-foreground"
-                          : "hover:bg-secondary"
+                        selectedSubjects.includes(s) ? "bg-coral-gradient text-primary-foreground" : "hover:bg-secondary"
                       }`}
                       onClick={() => toggleSubject(s)}
                     >
@@ -185,8 +186,7 @@ const Discover = () => {
                 </div>
                 {selectedSubjects.length > 0 && (
                   <Button variant="ghost" size="sm" className="mt-2 text-primary" onClick={() => setSelectedSubjects([])}>
-                    <X className="mr-1 h-3 w-3" />
-                    Clear filters
+                    <X className="mr-1 h-3 w-3" /> Clear filters
                   </Button>
                 )}
               </motion.div>

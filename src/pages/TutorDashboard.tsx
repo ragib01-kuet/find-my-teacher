@@ -13,10 +13,10 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  GraduationCap, Edit3, MapPin, BookOpen, Star, Calendar, Phone,
+  GraduationCap, Edit3, BookOpen, Star, Phone,
   MessageCircle, Users, Check, X, Save, Plus, Camera,
   LayoutDashboard, Inbox, Bell, Video, Upload, Trash2, AlertCircle,
-  TrendingUp, Award, ChevronRight, Eye, Clock,
+  Award, ChevronRight, Eye, Clock, Wifi, CreditCard,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -38,17 +38,17 @@ const TutorDashboard = () => {
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [uploadingIdCard, setUploadingIdCard] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("home");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const idCardInputRef = useRef<HTMLInputElement>(null);
 
   const [editBio, setEditBio] = useState("");
   const [editFee, setEditFee] = useState("");
   const [editExperience, setEditExperience] = useState("");
   const [editSubjects, setEditSubjects] = useState<string[]>([]);
-  const [editAreas, setEditAreas] = useState<string[]>([]);
   const [newSubject, setNewSubject] = useState("");
-  const [newArea, setNewArea] = useState("");
 
   useEffect(() => {
     if (!user || role !== "tutor") return;
@@ -59,11 +59,10 @@ const TutorDashboard = () => {
       const { data: t } = await supabase.from("tutor_profiles").select("*").eq("user_id", user.id).single();
       if (t) {
         setTutor(t as TutorProfile);
-        setEditBio(t.bio || "");
-        setEditFee(String(t.fee_expectation || ""));
-        setEditExperience(t.experience || "");
-        setEditSubjects(t.subjects || []);
-        setEditAreas(t.preferred_areas || []);
+        setEditBio((t as any).bio || "");
+        setEditFee(String((t as any).fee_expectation || ""));
+        setEditExperience((t as any).experience || "");
+        setEditSubjects((t as any).subjects || []);
       }
 
       const { data: reqs } = await supabase
@@ -97,7 +96,6 @@ const TutorDashboard = () => {
         .order("created_at", { ascending: false }).limit(50);
       if (notifs) setNotifications(notifs as Notification[]);
 
-      // Fetch demo video views
       const { data: dv } = await supabase
         .from("demo_video_views").select("*").eq("tutor_id", user.id)
         .order("watched_at", { ascending: false });
@@ -182,6 +180,25 @@ const TutorDashboard = () => {
     if (videoInputRef.current) videoInputRef.current.value = "";
   };
 
+  const handleIdCardUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user || !tutor) return;
+    if (!file.type.startsWith("image/")) { toast.error("Please select an image file"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("Image must be less than 5MB"); return; }
+    setUploadingIdCard(true);
+    const ext = file.name.split(".").pop();
+    const filePath = `${user.id}/id-card.${ext}`;
+    const { error: uploadError } = await supabase.storage.from("avatars").upload(filePath, file, { upsert: true });
+    if (uploadError) { toast.error("Upload failed: " + uploadError.message); setUploadingIdCard(false); return; }
+    const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(filePath);
+    const idCardUrl = urlData.publicUrl + "?t=" + Date.now();
+    const { error: updateError } = await supabase.from("tutor_profiles").update({ id_card_url: idCardUrl } as any).eq("id", tutor.id);
+    setUploadingIdCard(false);
+    if (updateError) { toast.error("Failed to save ID card"); }
+    else { setTutor({ ...tutor, id_card_url: idCardUrl }); toast.success("University ID card uploaded! Profile completion updated."); }
+    if (idCardInputRef.current) idCardInputRef.current.value = "";
+  };
+
   const handleDeleteVideo = async () => {
     if (!tutor || !tutor.demo_video_url || !user) return;
     const oldPath = tutor.demo_video_url.split("/demo-videos/")[1]?.split("?")[0];
@@ -199,13 +216,12 @@ const TutorDashboard = () => {
       fee_expectation: parseInt(editFee) || 0,
       experience: editExperience.trim() || null,
       subjects: editSubjects,
-      preferred_areas: editAreas,
     } as any).eq("id", tutor.id);
     setSaving(false);
     if (error) { toast.error("Failed to save: " + error.message); }
     else {
       toast.success("Profile updated!");
-      setTutor({ ...tutor, bio: editBio, fee_expectation: parseInt(editFee) || 0, experience: editExperience, subjects: editSubjects, preferred_areas: editAreas });
+      setTutor({ ...tutor, bio: editBio, fee_expectation: parseInt(editFee) || 0, experience: editExperience, subjects: editSubjects });
       setEditOpen(false);
     }
   };
@@ -280,13 +296,13 @@ const TutorDashboard = () => {
       <Navbar />
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
       <input ref={videoInputRef} type="file" accept="video/*" className="hidden" onChange={handleVideoUpload} />
+      <input ref={idCardInputRef} type="file" accept="image/*" className="hidden" onChange={handleIdCardUpload} />
 
-      {/* Scrollable content */}
       <div className="pt-16">
         <AnimatePresence mode="wait">
           {activeTab === "home" && (
             <motion.div key="home" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }}>
-              {/* Profile Card — Material style */}
+              {/* Profile Card */}
               <div className="bg-card border-b border-border">
                 <div className="px-4 py-5 sm:px-6 sm:py-6">
                   <div className="flex items-center gap-4">
@@ -328,8 +344,13 @@ const TutorDashboard = () => {
                           </Badge>
                         )}
                       </div>
+                      {/* University — Most prominent */}
+                      <p className="text-sm font-semibold text-foreground mt-0.5 flex items-center gap-1">
+                        <GraduationCap className="h-3.5 w-3.5 text-primary" />
+                        {(tutor as any)?.university_name || "KUET"}
+                      </p>
                       <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                        {tutor?.department} • Session {tutor?.session}
+                        {tutor?.department}
                         {profile?.phone && <span className="ml-1">• <Phone className="inline h-2.5 w-2.5" /> {profile.phone}</span>}
                       </p>
                       <div className="mt-2 flex gap-2">
@@ -339,7 +360,6 @@ const TutorDashboard = () => {
                               <Edit3 className="h-3 w-3" /> Edit Profile
                             </Button>
                           </DialogTrigger>
-                          {/* Edit Dialog */}
                           <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[85vh] overflow-y-auto">
                             <DialogHeader>
                               <DialogTitle className="font-display">Edit Your Profile</DialogTitle>
@@ -390,22 +410,15 @@ const TutorDashboard = () => {
                                   <Button size="sm" variant="outline" onClick={() => { if (newSubject.trim() && !editSubjects.includes(newSubject.trim())) { setEditSubjects(prev => [...prev, newSubject.trim()]); setNewSubject(""); } }}><Plus className="h-3.5 w-3.5" /></Button>
                                 </div>
                               </div>
+                              {/* Preferred Medium: non-editable, always Online */}
                               <div className="space-y-2">
-                                <Label>Preferred Areas</Label>
-                                <div className="flex flex-wrap gap-1.5">
-                                  {editAreas.map(a => (
-                                    <Badge key={a} className="gap-1 bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border-0">
-                                      {a}
-                                      <button onClick={() => setEditAreas(prev => prev.filter(x => x !== a))} className="ml-0.5 hover:text-destructive"><X className="h-3 w-3" /></button>
-                                    </Badge>
-                                  ))}
+                                <Label>Preferred Medium</Label>
+                                <div className="flex items-center gap-2 rounded-lg border border-border bg-secondary/40 px-3 py-2">
+                                  <Wifi className="h-4 w-4 text-blue-500" />
+                                  <span className="text-sm text-foreground font-medium">Online Only</span>
+                                  <Badge className="ml-auto text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border-0">Fixed</Badge>
                                 </div>
-                                <div className="flex gap-2">
-                                  <Input placeholder="Add area" value={newArea} onChange={e => setNewArea(e.target.value)} className="text-sm"
-                                    onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); if (newArea.trim() && !editAreas.includes(newArea.trim())) { setEditAreas(prev => [...prev, newArea.trim()]); setNewArea(""); } } }}
-                                  />
-                                  <Button size="sm" variant="outline" onClick={() => { if (newArea.trim() && !editAreas.includes(newArea.trim())) { setEditAreas(prev => [...prev, newArea.trim()]); setNewArea(""); } }}><Plus className="h-3.5 w-3.5" /></Button>
-                                </div>
+                                <p className="text-xs text-muted-foreground">This platform is online-only. This cannot be changed.</p>
                               </div>
                               <Button onClick={handleSaveProfile} disabled={saving} className="w-full gap-2 bg-coral-gradient text-primary-foreground rounded-full">
                                 <Save className="h-4 w-4" /> {saving ? "Saving..." : "Save Changes"}
@@ -445,7 +458,7 @@ const TutorDashboard = () => {
               </div>
 
               <div className="px-4 py-4 sm:px-6 space-y-4">
-                {/* Stats Grid — Android card style */}
+                {/* Stats Grid */}
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   {[
                     { label: "Students", value: acceptedCount, icon: Users, gradient: "from-emerald-500 to-emerald-600" },
@@ -464,12 +477,7 @@ const TutorDashboard = () => {
                 </div>
 
                 {/* Quick Actions */}
-                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                  <Link to="/discover">
-                    <Button size="sm" variant="outline" className="shrink-0 rounded-full gap-1.5 text-xs h-8">
-                      <Eye className="h-3 w-3" /> View My Public Profile
-                    </Button>
-                  </Link>
+                <div className="flex gap-2 overflow-x-auto pb-1">
                   <Button size="sm" variant="outline" className="shrink-0 rounded-full gap-1.5 text-xs h-8" onClick={() => setEditOpen(true)}>
                     <Edit3 className="h-3 w-3" /> Quick Edit
                   </Button>
@@ -490,6 +498,14 @@ const TutorDashboard = () => {
                     </div>
                     <div className="h-10 w-px bg-border" />
                     <div>
+                      <p className="text-xs text-muted-foreground">Medium</p>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <Wifi className="h-3.5 w-3.5 text-blue-500" />
+                        <span className="text-xs font-semibold text-foreground">Online</span>
+                      </div>
+                    </div>
+                    <div className="h-10 w-px bg-border" />
+                    <div>
                       <p className="text-xs text-muted-foreground">Status</p>
                       <Badge className={`text-[10px] mt-0.5 ${tutor?.status === "approved" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"} border-0`}>
                         {tutor?.status}
@@ -507,31 +523,50 @@ const TutorDashboard = () => {
                   </motion.div>
                 )}
 
-                {/* Subjects & Areas */}
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-                    className="rounded-2xl border border-border bg-card p-4 shadow-card">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                      <BookOpen className="h-3 w-3" /> Subjects
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {(tutor?.subjects || []).length > 0 ? tutor!.subjects.map(s => (
-                        <Badge key={s} className="rounded-full px-2.5 py-0.5 text-[11px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border-0">{s}</Badge>
-                      )) : <p className="text-xs text-muted-foreground italic">No subjects added</p>}
+                {/* Subjects */}
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+                  className="rounded-2xl border border-border bg-card p-4 shadow-card">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <BookOpen className="h-3 w-3" /> Subjects
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(tutor?.subjects || []).length > 0 ? tutor!.subjects.map(s => (
+                      <Badge key={s} className="rounded-full px-2.5 py-0.5 text-[11px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border-0">{s}</Badge>
+                    )) : <p className="text-xs text-muted-foreground italic">No subjects added</p>}
+                  </div>
+                </motion.div>
+
+                {/* University ID Card Upload */}
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
+                  className="rounded-2xl border border-border bg-card shadow-card overflow-hidden">
+                  <div className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                        <CreditCard className="h-3 w-3" /> University ID Card
+                      </p>
+                      {!(tutor as any)?.id_card_url && (
+                        <Badge variant="outline" className="text-[9px] border-destructive/50 text-destructive rounded-full">Required</Badge>
+                      )}
                     </div>
-                  </motion.div>
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
-                    className="rounded-2xl border border-border bg-card p-4 shadow-card">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                      <MapPin className="h-3 w-3" /> Preferred Areas
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {(tutor?.preferred_areas || []).length > 0 ? tutor!.preferred_areas.map(a => (
-                        <Badge key={a} className="rounded-full px-2.5 py-0.5 text-[11px] bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border-0">{a}</Badge>
-                      )) : <p className="text-xs text-muted-foreground italic">No areas added</p>}
-                    </div>
-                  </motion.div>
-                </div>
+                    {(tutor as any)?.id_card_url ? (
+                      <div className="space-y-2">
+                        <img src={(tutor as any).id_card_url} alt="ID Card" className="w-full max-h-40 object-cover rounded-xl border border-border" />
+                        <Button size="sm" variant="outline" onClick={() => idCardInputRef.current?.click()} className="gap-1.5 text-xs rounded-full h-7">
+                          <Upload className="h-3 w-3" /> Replace ID Card
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center rounded-xl border-2 border-dashed border-border p-6">
+                        <CreditCard className="h-8 w-8 text-muted-foreground" />
+                        <p className="mt-2 text-xs text-muted-foreground text-center">Upload your university ID card to unlock 100% profile completion</p>
+                        <Button onClick={() => idCardInputRef.current?.click()} disabled={uploadingIdCard}
+                          className="mt-3 gap-2 bg-coral-gradient text-primary-foreground rounded-full text-xs h-8">
+                          <Upload className="h-3 w-3" /> {uploadingIdCard ? "Uploading..." : "Upload ID Card"}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
 
                 {/* Demo Video Card */}
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
@@ -594,7 +629,7 @@ const TutorDashboard = () => {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-foreground truncate">{req.student_name_resolved}</p>
-                            <p className="text-[10px] text-muted-foreground truncate">{req.subject || "General Tuition"} {req.area && `• ${req.area}`}</p>
+                            <p className="text-[10px] text-muted-foreground truncate">{req.subject || "General Tuition"}</p>
                           </div>
                           <Badge className={`text-[9px] shrink-0 ${statusColor(req.status)} border-0`}>{req.status}</Badge>
                         </div>
@@ -634,7 +669,6 @@ const TutorDashboard = () => {
                             {req.subject && <span>📚 {req.subject}</span>}
                             {req.class_level && <span> • 🎓 {req.class_level}</span>}
                             {req.budget && <span> • ৳{req.budget}/mo</span>}
-                            {req.area && <span> • 📍 {req.area}</span>}
                           </p>
                           {req.message && <p className="mt-2 text-sm text-foreground bg-secondary/50 rounded-xl p-2.5">{req.message}</p>}
                           {req.status === "pending" && (
@@ -669,9 +703,7 @@ const TutorDashboard = () => {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-display text-lg font-bold text-foreground">Notifications</h2>
                 {unreadNotifs > 0 && (
-                  <Button size="sm" variant="ghost" onClick={markAllRead} className="text-xs text-primary rounded-full h-7">
-                    Mark all read
-                  </Button>
+                  <Button size="sm" variant="ghost" onClick={markAllRead} className="text-xs text-primary rounded-full h-7">Mark all read</Button>
                 )}
               </div>
               <div className="space-y-2">
@@ -720,8 +752,6 @@ const TutorDashboard = () => {
               <h2 className="font-display text-lg font-bold text-foreground mb-4 flex items-center gap-2">
                 <Eye className="h-5 w-5 text-rose-500" /> Demo Video Viewers
               </h2>
-
-              {/* Summary */}
               <div className="grid grid-cols-3 gap-3 mb-4">
                 {[
                   { label: "Total Views", value: demoViews.length, color: "text-blue-500" },
@@ -734,8 +764,6 @@ const TutorDashboard = () => {
                   </div>
                 ))}
               </div>
-
-              {/* Viewer Cards */}
               <div className="space-y-3">
                 {demoViews.length > 0 ? (
                   demoViews.map(v => (
@@ -755,9 +783,7 @@ const TutorDashboard = () => {
                         </div>
                         <div className="flex items-center gap-2">
                           {v.completed ? (
-                            <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border-0 text-[10px]">
-                              Watched
-                            </Badge>
+                            <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border-0 text-[10px]">Watched</Badge>
                           ) : (
                             <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border-0 text-[10px]">
                               <Clock className="h-2.5 w-2.5 mr-0.5" /> Watching
@@ -793,8 +819,6 @@ const TutorDashboard = () => {
             <motion.div key="reviews" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}
               className="px-4 py-4 sm:px-6">
               <h2 className="font-display text-lg font-bold text-foreground mb-4">Reviews & Ratings</h2>
-
-              {/* Rating Summary */}
               <div className="rounded-2xl border border-border bg-card p-5 shadow-card mb-4">
                 <div className="flex items-center gap-6">
                   <div className="text-center">
@@ -823,8 +847,6 @@ const TutorDashboard = () => {
                   </div>
                 </div>
               </div>
-
-              {/* Review Cards */}
               <div className="space-y-3">
                 {reviews.length > 0 ? (
                   reviews.map(r => (
@@ -862,18 +884,14 @@ const TutorDashboard = () => {
         </AnimatePresence>
       </div>
 
-      {/* Android-style Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-lg safe-bottom">
+      {/* Bottom Navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-lg">
         <div className="flex items-center justify-around px-2 py-1">
           {bottomTabs.map(tab => {
             const isActive = activeTab === tab.key;
             return (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`relative flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-all min-w-[60px] ${
-                  isActive ? "text-primary" : "text-muted-foreground"
-                }`}
+              <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+                className={`relative flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-all min-w-[60px] ${isActive ? "text-primary" : "text-muted-foreground"}`}
               >
                 {isActive && (
                   <motion.div layoutId="bottomNavIndicator" className="absolute top-0 left-1/2 -translate-x-1/2 h-[3px] w-8 rounded-full bg-primary" />

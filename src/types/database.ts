@@ -27,6 +27,7 @@ export interface TutorProfile {
   user_id: string;
   department: string;
   session: string;
+  university_name: string;
   subjects: string[];
   preferred_areas: string[];
   fee_expectation: number;
@@ -35,6 +36,7 @@ export interface TutorProfile {
   photo_url: string | null;
   cv_url: string | null;
   demo_video_url: string | null;
+  id_card_url: string | null;
   status: TutorStatus;
   rating: number;
   total_reviews: number;
@@ -126,17 +128,17 @@ export interface DemoVideoView {
   created_at: string;
 }
 
-// Profile completion helper
+// Profile completion helper — now requires 8 fields including university ID card
 export function getProfileCompletion(tutor: TutorProfile | null): { percentage: number; missing: string[] } {
   if (!tutor) return { percentage: 0, missing: ['Everything'] };
   const fields: { key: string; label: string; check: () => boolean }[] = [
     { key: 'photo', label: 'Profile Photo', check: () => !!tutor.photo_url },
     { key: 'bio', label: 'Bio / About', check: () => !!tutor.bio && tutor.bio.trim().length > 0 },
     { key: 'subjects', label: 'Subjects', check: () => tutor.subjects?.length > 0 },
-    { key: 'areas', label: 'Preferred Areas', check: () => tutor.preferred_areas?.length > 0 },
     { key: 'fee', label: 'Fee Expectation', check: () => tutor.fee_expectation > 0 },
     { key: 'experience', label: 'Experience', check: () => !!tutor.experience && tutor.experience.trim().length > 0 },
     { key: 'demo_video', label: 'Demo Video', check: () => !!tutor.demo_video_url },
+    { key: 'id_card', label: 'University ID Card', check: () => !!tutor.id_card_url },
   ];
   const missing = fields.filter(f => !f.check()).map(f => f.label);
   const filled = fields.length - missing.length;

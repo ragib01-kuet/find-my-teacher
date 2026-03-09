@@ -375,6 +375,7 @@ export type Database = {
           experience: string | null
           fee_expectation: number
           id: string
+          id_card_url: string | null
           photo_url: string | null
           preferred_areas: string[]
           rating: number | null
@@ -382,6 +383,7 @@ export type Database = {
           status: Database["public"]["Enums"]["tutor_status"]
           subjects: string[]
           total_reviews: number | null
+          university_name: string | null
           updated_at: string
           user_id: string
         }
@@ -395,6 +397,7 @@ export type Database = {
           experience?: string | null
           fee_expectation?: number
           id?: string
+          id_card_url?: string | null
           photo_url?: string | null
           preferred_areas?: string[]
           rating?: number | null
@@ -402,6 +405,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["tutor_status"]
           subjects?: string[]
           total_reviews?: number | null
+          university_name?: string | null
           updated_at?: string
           user_id: string
         }
@@ -415,6 +419,7 @@ export type Database = {
           experience?: string | null
           fee_expectation?: number
           id?: string
+          id_card_url?: string | null
           photo_url?: string | null
           preferred_areas?: string[]
           rating?: number | null
@@ -422,6 +427,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["tutor_status"]
           subjects?: string[]
           total_reviews?: number | null
+          university_name?: string | null
           updated_at?: string
           user_id?: string
         }

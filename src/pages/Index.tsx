@@ -5,6 +5,7 @@ import FeaturesSection from "@/components/FeaturesSection";
 import TutorCard from "@/components/TutorCard";
 import Footer from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
+import { getProfileCompletion } from "@/types/database";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -17,6 +18,7 @@ interface FeaturedTutor {
   photo: string;
   department: string;
   session: string;
+  university_name: string;
   subjects: string[];
   areas: string[];
   fee: string;
@@ -34,11 +36,18 @@ const Index = () => {
         .select("*")
         .eq("status", "approved")
         .order("rating", { ascending: false })
-        .limit(6);
+        .limit(20);
 
       if (data) {
+        // Featured tutors: 100% complete AND have demo video + id card
+        const featuredTutors = data.filter((t: any) => {
+          const isComplete = getProfileCompletion(t as any).percentage === 100;
+          const hasDemo = !!t.demo_video_url;
+          return isComplete && hasDemo;
+        });
+
         const enriched = await Promise.all(
-          data.map(async (t: any) => {
+          featuredTutors.slice(0, 6).map(async (t: any) => {
             const { data: profile } = await supabase
               .from("profiles")
               .select("full_name, avatar_url")
@@ -51,6 +60,7 @@ const Index = () => {
               photo: t.photo_url || profile?.avatar_url || "",
               department: t.department,
               session: t.session,
+              university_name: t.university_name || "KUET",
               subjects: t.subjects || [],
               areas: t.preferred_areas || [],
               fee: t.fee_expectation?.toLocaleString() || "0",
@@ -87,13 +97,12 @@ const Index = () => {
                   Featured <span className="text-gradient-coral">Tutors</span>
                 </h2>
                 <p className="mt-2 text-sm text-muted-foreground sm:text-base">
-                  Hand-picked, admin-verified KUET tutors ready to help.
+                  100% verified KUET tutors with demo class videos.
                 </p>
               </div>
               <Link to="/discover" className="hidden sm:block">
                 <Button variant="ghost" className="gap-2 text-primary">
-                  View All
-                  <ArrowRight className="h-4 w-4" />
+                  View All <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
             </motion.div>
@@ -107,8 +116,7 @@ const Index = () => {
             <div className="mt-8 text-center sm:hidden">
               <Link to="/discover">
                 <Button className="gap-2 bg-coral-gradient text-primary-foreground">
-                  View All Tutors
-                  <ArrowRight className="h-4 w-4" />
+                  View All Tutors <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
             </div>
@@ -135,8 +143,7 @@ const Index = () => {
             <div className="relative mt-6 flex flex-col items-center gap-4 sm:mt-8 sm:flex-row sm:justify-center">
               <Link to="/discover">
                 <Button size="lg" className="gap-2 bg-coral-gradient px-8 text-primary-foreground hover:opacity-90">
-                  Browse Tutors
-                  <ArrowRight className="h-4 w-4" />
+                  Browse Tutors <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
               <Link to="/login">
