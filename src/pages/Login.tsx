@@ -177,6 +177,9 @@ const Login = () => {
                     <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input placeholder="you@example.com" className="pl-10" type="email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} required />
                   </div>
+                  {signupRole === "tutor" && signupEmail && isAutoApprovedEmail && (
+                    <p className="text-xs text-green-600 mt-1">✅ Matching email detected — you'll be auto-approved!</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Password *</Label>
