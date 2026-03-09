@@ -976,6 +976,13 @@ const TutorDashboard = () => {
           })}
         </div>
       </nav>
+
+      <ContractModal
+        open={!!selectedContract}
+        onOpenChange={() => setSelectedContract(null)}
+        contract={selectedContract}
+        classroomCode={selectedClassroomCode}
+      />
     </div>
   );
 };

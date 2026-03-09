@@ -35,6 +35,9 @@ const StudentDashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [requests, setRequests] = useState<EnrichedRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [contracts, setContracts] = useState<any[]>([]);
+  const [selectedContract, setSelectedContract] = useState<any>(null);
+  const [selectedClassroomCode, setSelectedClassroomCode] = useState<string | null>(null);
 
   // Demo video state
   const [demoAccess, setDemoAccess] = useState<DemoAccess[]>([]);
