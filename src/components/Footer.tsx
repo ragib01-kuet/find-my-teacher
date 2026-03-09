@@ -12,7 +12,7 @@ const Footer = () => {
                 <GraduationCap className="h-4 w-4 text-primary-foreground" />
               </div>
               <span className="font-display text-sm font-bold text-foreground">
-                KUET Tuition Ecosystem
+                FindMyTeacher
               </span>
             </Link>
             <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground">
@@ -25,7 +25,7 @@ const Footer = () => {
           </div>
           <div className="text-center">
             <p className="text-xs text-muted-foreground">
-              © 2026 KUET Tuition Ecosystem. Exclusively for KUET, Khulna.
+              © 2026 FindMyTeacher. Bringing quality education to every corner of Bangladesh.
             </p>
           </div>
         </div>

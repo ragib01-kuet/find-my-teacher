@@ -11,16 +11,15 @@ const TermsOfService = () => (
           <p><strong>Last updated:</strong> March 6, 2026</p>
 
           <h2 className="font-display text-lg font-semibold text-foreground mt-6">1. Acceptance of Terms</h2>
-          <p>By accessing and using the KUET Tuition Ecosystem platform, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our services.</p>
+          <p>By accessing and using the FindMyTeacher platform, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our services.</p>
 
           <h2 className="font-display text-lg font-semibold text-foreground mt-6">2. Platform Description</h2>
-          <p>KUET Tuition Ecosystem is an academic matching platform exclusively designed for Khulna University of Engineering & Technology (KUET) students and local guardians/students seeking tutoring services. The platform connects verified KUET tutors with students.</p>
+          <p>FindMyTeacher is an online tutoring platform that connects verified tutors with students seeking quality education. The platform is 100% online, enabling students from anywhere — including remote villages — to access quality tutoring.</p>
 
           <h2 className="font-display text-lg font-semibold text-foreground mt-6">3. User Accounts</h2>
           <ul className="list-disc pl-5 space-y-1">
             <li>You must provide accurate information when creating an account.</li>
-            <li>Tutors with @stud.kuet.ac.bd email addresses are auto-verified.</li>
-            <li>Non-KUET email tutors require admin approval before their profiles become visible.</li>
+            <li>All tutor profiles require admin verification before becoming visible.</li>
             <li>You are responsible for maintaining the confidentiality of your account credentials.</li>
           </ul>
 
@@ -33,7 +32,7 @@ const TermsOfService = () => (
           </ul>
 
           <h2 className="font-display text-lg font-semibold text-foreground mt-6">5. Tutor Responsibilities</h2>
-          <p>Tutors must provide accurate academic qualifications, subject expertise, and fee expectations. Tutors agree to respond to student interest requests in a timely manner.</p>
+          <p>Tutors must provide accurate academic qualifications, subject expertise, and fee expectations. Tutors agree to respond to student interest requests in a timely manner and conduct all sessions online.</p>
 
           <h2 className="font-display text-lg font-semibold text-foreground mt-6">6. Payment & Fees</h2>
           <p>All tuition fee negotiations and payments occur directly between tutors and students. The platform does not process payments. Commission arrangements may apply as determined by the admin.</p>
@@ -45,7 +44,7 @@ const TermsOfService = () => (
           <p>The admin may suspend or terminate any account that violates these terms, engages in fraudulent activity, or receives multiple reports from other users.</p>
 
           <h2 className="font-display text-lg font-semibold text-foreground mt-6">9. Disclaimer</h2>
-          <p>KUET Tuition Ecosystem acts as a matchmaking platform. We do not guarantee the quality of tutoring services, and we are not responsible for disputes between tutors and students.</p>
+          <p>FindMyTeacher acts as a matchmaking platform. We do not guarantee the quality of tutoring services, and we are not responsible for disputes between tutors and students.</p>
 
           <h2 className="font-display text-lg font-semibold text-foreground mt-6">10. Contact</h2>
           <p>For questions about these terms, please contact the platform administrator through the admin panel.</p>

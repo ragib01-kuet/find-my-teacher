@@ -65,7 +65,7 @@ const Navbar = () => {
             <GraduationCap className="h-5 w-5 text-primary-foreground" />
           </Link>
           <button onClick={handleTitleClick} className="font-display text-lg font-bold tracking-tight text-foreground select-none">
-            KUET <span className="text-gradient-coral">Tuition</span>
+            FindMy<span className="text-gradient-coral">Teacher</span>
           </button>
         </div>
 

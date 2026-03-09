@@ -1,11 +1,11 @@
-import { Shield, Eye, MessageCircle, CheckCircle, Search, Star } from "lucide-react";
+import { Shield, Eye, MessageCircle, CheckCircle, Wifi, Star } from "lucide-react";
 import { motion } from "framer-motion";
 
 const features = [
   {
     icon: Shield,
-    title: "Admin Verified",
-    desc: "Every tutor is verified by KUET administration before going live.",
+    title: "Verified Tutors",
+    desc: "Every tutor is verified by our team before going live on the platform.",
   },
   {
     icon: Eye,
@@ -18,9 +18,9 @@ const features = [
     desc: "In-platform chat with contact masking and admin monitoring.",
   },
   {
-    icon: Search,
-    title: "Smart Discovery",
-    desc: "Filter by subject, budget, location, and experience level.",
+    icon: Wifi,
+    title: "100% Online",
+    desc: "Learn from anywhere — city or village. All you need is an internet connection.",
   },
   {
     icon: CheckCircle,
@@ -45,10 +45,10 @@ const FeaturesSection = () => {
           className="mx-auto max-w-2xl text-center"
         >
           <h2 className="font-display text-3xl font-bold text-foreground sm:text-4xl">
-            Built for <span className="text-gradient-coral">Trust & Privacy</span>
+            Built for <span className="text-gradient-coral">Trust & Access</span>
           </h2>
           <p className="mt-4 text-muted-foreground">
-            Not just another tuition site. A controlled academic ecosystem.
+            Quality online education accessible to every student, everywhere.
           </p>
         </motion.div>
 
