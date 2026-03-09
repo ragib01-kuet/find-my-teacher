@@ -636,6 +636,12 @@ const AdminDashboard = () => {
               </ScrollArea>
             </DialogContent>
           </Dialog>
+          <ContractModal
+            open={!!selectedContract}
+            onOpenChange={() => setSelectedContract(null)}
+            contract={selectedContract}
+            classroomCode={selectedClassroomCode}
+          />
         </div>
       </div>
     </div>
