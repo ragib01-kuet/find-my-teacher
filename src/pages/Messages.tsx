@@ -544,20 +544,7 @@ const Messages = () => {
                             .maybeSingle();
 
                           if (existingDeal) {
-                            toast.info(`Deal already ${existingDeal.status === "pending_admin" ? "submitted and awaiting admin approval" : existingDeal.status}.`);
-                            return;
-                          }
-
-                          // Create the deal
-                          const { error } = await supabase.from("deals").insert({
-                            request_id: selectedRequest.id,
-                            tutor_id: selectedRequest.tutor_id,
-                            student_id: user.id,
-                            status: "pending_admin",
-                          } as any);
-
-                          if (error) {
-                            toast.error("Failed to submit deal request.");
+                            toast.info(`Deal already ${existingDeal.status === "pending_admin" ? "processing" : existingDeal.status}.`);
                             return;
                           }
 
@@ -577,6 +564,59 @@ const Messages = () => {
                             .single();
                           const tutorName = tutorProfile?.full_name || "a tutor";
 
+                          // Generate classroom code
+                          const roomCode = `ROOM-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+                          // Auto-approve: create the deal with approved status
+                          const { data: newDeal, error } = await supabase.from("deals").insert({
+                            request_id: selectedRequest.id,
+                            tutor_id: selectedRequest.tutor_id,
+                            student_id: user.id,
+                            status: "approved",
+                            classroom_code: roomCode,
+                          } as any).select().single();
+
+                          if (error) {
+                            toast.error("Failed to create deal.");
+                            return;
+                          }
+
+                          // Generate contract
+                          const contractText = `TUTORING AGREEMENT CONTRACT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Platform: KUET Tuition Ecosystem
+Date: ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+
+PARTIES:
+• Student: ${studentName}
+• Tutor: ${tutorName}
+
+SUBJECT: ${selectedRequest.subject || "General Tuition"}
+
+AGREEMENT:
+This contract hereby establishes a formal tutoring agreement between the above-named Student and Tutor, facilitated through the KUET Tuition Ecosystem platform.
+
+1. The Tutor agrees to provide quality tutoring services in the specified subject.
+2. The Student agrees to attend scheduled sessions and participate actively.
+3. Both parties agree to maintain professional conduct at all times.
+4. Either party may terminate this agreement with prior notice.
+5. The platform acts as a facilitator and is not liable for disputes between parties.
+
+CLASSROOM ACCESS:
+Upon both signatures, a unique Classroom Code will be provided for virtual sessions.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Both parties must digitally sign below to activate the classroom.`;
+
+                          await supabase.from("contracts").insert({
+                            deal_id: (newDeal as any).id,
+                            student_id: user.id,
+                            tutor_id: selectedRequest.tutor_id,
+                            contract_text: contractText,
+                            subject: selectedRequest.subject,
+                          } as any);
+
                           // Notify all admins
                           const { data: adminRoles } = await supabase
                             .from("user_roles")
@@ -588,15 +628,13 @@ const Messages = () => {
                               adminRoles.map((admin) =>
                                 supabase.from("notifications").insert({
                                   user_id: admin.user_id,
-                                  title: "Deal Finalization Request",
-                                  message: `${studentName} wants to finalize a deal with ${tutorName} for ${selectedRequest.subject || "tuition"}.`,
-                                  type: "deal_request",
+                                  title: "Deal Auto-Approved",
+                                  message: `Deal between ${studentName} and ${tutorName} for ${selectedRequest.subject || "tuition"} was auto-approved.`,
+                                  type: "deal_approved",
                                   metadata: {
                                     request_id: selectedRequest.id,
                                     student_id: user.id,
                                     tutor_id: selectedRequest.tutor_id,
-                                    student_name: studentName,
-                                    tutor_name: tutorName,
                                   },
                                 } as any)
                               )
@@ -606,13 +644,13 @@ const Messages = () => {
                           // Notify tutor
                           await supabase.from("notifications").insert({
                             user_id: selectedRequest.tutor_id,
-                            title: "Student Interested in Deal",
-                            message: `${studentName} is interested in finalizing a deal with you for ${selectedRequest.subject || "tuition"}. Waiting for admin approval.`,
-                            type: "deal_request",
+                            title: "Deal Approved — Sign Contract",
+                            message: `${studentName} finalized a deal with you for ${selectedRequest.subject || "tuition"}. Please sign the contract in your dashboard.`,
+                            type: "deal_approved",
                             metadata: { student_id: user.id, student_name: studentName },
                           } as any);
 
-                          toast.success("Interest submitted! Admin will review and approve the deal.", { duration: 5000 });
+                          toast.success("Deal approved! Please sign the contract in your dashboard to unlock the classroom.", { duration: 6000 });
                         }}
                       >
                         <Handshake className="h-3.5 w-3.5" /> Interested

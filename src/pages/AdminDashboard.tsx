@@ -19,10 +19,11 @@ import {
 import {
   Shield, Users, CheckCircle, XCircle, Eye, AlertTriangle,
   MessageCircle, Ban, FileText, Trash2, GraduationCap, Heart, Zap, Phone,
-  Lock, Mail, ArrowRight,
+  Lock, Mail, ArrowRight, Handshake,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import ContractModal from "@/components/ContractModal";
 
 
 interface StudentInfo {
@@ -46,6 +47,9 @@ const AdminDashboard = () => {
   const [chatMessages, setChatMessages] = useState<(MessageType & { sender_name?: string })[]>([]);
   const [selectedChat, setSelectedChat] = useState<TuitionRequest | null>(null);
   const [stats, setStats] = useState({ tutors: 0, students: 0, requests: 0, deals: 0 });
+  const [deals, setDeals] = useState<any[]>([]);
+  const [selectedContract, setSelectedContract] = useState<any>(null);
+  const [selectedClassroomCode, setSelectedClassroomCode] = useState<string | null>(null);
 
   useEffect(() => {
     if (role !== "admin") return;
@@ -127,6 +131,32 @@ const AdminDashboard = () => {
       const { count: reqCount } = await supabase.from("tuition_requests").select("*", { count: "exact", head: true });
       const { count: dealCount } = await supabase.from("deals").select("*", { count: "exact", head: true });
       setStats({ tutors: tutorCount || 0, students: studentCount || 0, requests: reqCount || 0, deals: dealCount || 0 });
+
+      // Deals with enriched data
+      const { data: dealsData } = await supabase.from("deals").select("*").order("created_at", { ascending: false });
+      if (dealsData) {
+        const enrichedDeals = await Promise.all(
+          dealsData.map(async (deal: any) => {
+            const { data: sp } = await supabase.from("profiles").select("full_name").eq("user_id", deal.student_id).single();
+            const { data: tp } = await supabase.from("profiles").select("full_name").eq("user_id", deal.tutor_id).single();
+            const { data: tutorP } = await supabase.from("tutor_profiles").select("department, university_name").eq("user_id", deal.tutor_id).single();
+            const { data: req } = await supabase.from("tuition_requests").select("subject").eq("id", deal.request_id).single();
+            const { data: contract } = await supabase.from("contracts").select("*").eq("deal_id", deal.id).maybeSingle();
+            const sigCount = contract ? (await supabase.from("contract_signatures").select("id", { count: "exact", head: true }).eq("contract_id", contract.id)).count || 0 : 0;
+            return {
+              ...deal,
+              student_name: sp?.full_name || "Unknown",
+              tutor_name: tp?.full_name || "Unknown",
+              tutor_department: tutorP?.department || "",
+              tutor_university: (tutorP as any)?.university_name || "KUET",
+              subject: req?.subject || "N/A",
+              contract,
+              signature_count: sigCount,
+            };
+          })
+        );
+        setDeals(enrichedDeals);
+      }
     };
     fetchAll();
   }, [role]);
@@ -317,6 +347,9 @@ const AdminDashboard = () => {
               <TabsTrigger value="requests" className="gap-1 text-xs sm:gap-2 sm:text-sm">
                 <MessageCircle className="h-3.5 w-3.5" /> Requests
               </TabsTrigger>
+              <TabsTrigger value="deals" className="gap-1 text-xs sm:gap-2 sm:text-sm">
+                <Handshake className="h-3.5 w-3.5" /> Deals ({deals.length})
+              </TabsTrigger>
               <TabsTrigger value="reports" className="gap-1 text-xs sm:gap-2 sm:text-sm">
                 <AlertTriangle className="h-3.5 w-3.5" /> Reports
               </TabsTrigger>
@@ -471,6 +504,45 @@ const AdminDashboard = () => {
               </div>
             </TabsContent>
 
+            {/* Deals */}
+            <TabsContent value="deals">
+              <div className="space-y-3">
+                {deals.length === 0 ? (
+                  <div className="rounded-2xl border border-border bg-card p-10 text-center shadow-card">
+                    <Handshake className="mx-auto h-10 w-10 text-muted-foreground" />
+                    <p className="mt-3 font-display text-base font-semibold text-foreground">No deals yet</p>
+                  </div>
+                ) : (
+                  deals.map((deal: any) => (
+                    <div key={deal.id} className="rounded-xl border border-border bg-card p-4 shadow-card">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-semibold text-foreground">{deal.student_name}</span>
+                            <span className="text-muted-foreground text-xs">↔</span>
+                            <span className="text-sm font-semibold text-foreground">{deal.tutor_name}</span>
+                            <Badge className={`text-[10px] ${statusColor(deal.status)}`}>{deal.status}</Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {deal.tutor_university} • {deal.tutor_department} • 📚 {deal.subject}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            {new Date(deal.created_at).toLocaleString()} • Signatures: {deal.signature_count}/2
+                          </p>
+                        </div>
+                        {deal.contract && (
+                          <Button size="sm" variant="outline" className="text-xs gap-1"
+                            onClick={() => { setSelectedContract(deal.contract); setSelectedClassroomCode(deal.classroom_code); }}>
+                            <FileText className="h-3 w-3" /> Contract
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </TabsContent>
+
             {/* Reports */}
             <TabsContent value="reports">
               <div className="space-y-3">
@@ -564,6 +636,12 @@ const AdminDashboard = () => {
               </ScrollArea>
             </DialogContent>
           </Dialog>
+          <ContractModal
+            open={!!selectedContract}
+            onOpenChange={() => setSelectedContract(null)}
+            contract={selectedContract}
+            classroomCode={selectedClassroomCode}
+          />
         </div>
       </div>
     </div>

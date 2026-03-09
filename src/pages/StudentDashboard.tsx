@@ -8,11 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  BookOpen, MessageCircle, Users, Heart, Star, Search, Video, Play, X,
+  BookOpen, MessageCircle, Users, Heart, Star, Search, Video, Play, X, FileText, ExternalLink,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Navigate, Link } from "react-router-dom";
 import { toast } from "sonner";
+import ContractModal from "@/components/ContractModal";
 
 interface EnrichedRequest extends TuitionRequest {
   tutor_name?: string;
@@ -34,6 +35,9 @@ const StudentDashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [requests, setRequests] = useState<EnrichedRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [contracts, setContracts] = useState<any[]>([]);
+  const [selectedContract, setSelectedContract] = useState<any>(null);
+  const [selectedClassroomCode, setSelectedClassroomCode] = useState<string | null>(null);
 
   // Demo video state
   const [demoAccess, setDemoAccess] = useState<DemoAccess[]>([]);
@@ -88,6 +92,21 @@ const StudentDashboard = () => {
           })
         );
         setDemoAccess(demos.filter(d => d.video_url));
+      }
+
+      // Contracts
+      const { data: contractsData } = await supabase
+        .from("contracts").select("*").eq("student_id", user.id).order("created_at", { ascending: false });
+      if (contractsData) {
+        const enrichedContracts = await Promise.all(
+          (contractsData as any[]).map(async (c) => {
+            const { data: tp } = await supabase.from("profiles").select("full_name").eq("user_id", c.tutor_id).single();
+            const { data: deal } = await supabase.from("deals").select("classroom_code, status").eq("id", c.deal_id).single();
+            const { count: sigCount } = await supabase.from("contract_signatures").select("id", { count: "exact", head: true }).eq("contract_id", c.id);
+            return { ...c, tutor_name: tp?.full_name || "Unknown", classroom_code: deal?.classroom_code, deal_status: deal?.status, signature_count: sigCount || 0 };
+          })
+        );
+        setContracts(enrichedContracts);
       }
 
       setLoading(false);
@@ -355,6 +374,47 @@ const StudentDashboard = () => {
             )}
           </AnimatePresence>
 
+          {/* Contracts & Classrooms */}
+          {contracts.length > 0 && (
+            <div className="mb-6">
+              <h2 className="mb-3 font-display text-lg font-semibold text-foreground flex items-center gap-2">
+                <FileText className="h-5 w-5 text-primary" /> Contracts & Classrooms
+              </h2>
+              <div className="space-y-3">
+                {contracts.map((c: any) => (
+                  <motion.div key={c.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
+                    className="rounded-xl border border-border bg-card p-4 shadow-card">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-foreground">📚 {c.subject || "Tuition"}</span>
+                          <Badge className={c.signature_count >= 2 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"}>
+                            {c.signature_count >= 2 ? "✅ Classroom Ready" : `⏳ ${c.signature_count}/2 Signed`}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">Tutor: {c.tutor_name}</p>
+                        <p className="text-[10px] text-muted-foreground">{new Date(c.created_at).toLocaleDateString()}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" className="text-xs gap-1"
+                          onClick={() => { setSelectedContract(c); setSelectedClassroomCode(c.classroom_code); }}>
+                          <FileText className="h-3 w-3" /> View
+                        </Button>
+                        {c.signature_count >= 2 && c.classroom_code && (
+                          <a href="https://noescape-rw.netlify.app/landing" target="_blank" rel="noopener noreferrer">
+                            <Button size="sm" className="text-xs gap-1">
+                              <ExternalLink className="h-3 w-3" /> Classroom
+                            </Button>
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Requests list */}
           <h2 className="mb-3 font-display text-lg font-semibold text-foreground">Your Requests</h2>
           <div className="space-y-3">
@@ -402,6 +462,12 @@ const StudentDashboard = () => {
         </div>
       </div>
       <Footer />
+      <ContractModal
+        open={!!selectedContract}
+        onOpenChange={() => setSelectedContract(null)}
+        contract={selectedContract}
+        classroomCode={selectedClassroomCode}
+      />
     </div>
   );
 };

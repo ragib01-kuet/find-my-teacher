@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { TutorProfile, Profile, TuitionRequest, Review, Notification, getProfileCompletion } from "@/types/database";
+import ContractModal from "@/components/ContractModal";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,14 +17,14 @@ import {
   GraduationCap, Edit3, BookOpen, Star, Phone,
   MessageCircle, Users, Check, X, Save, Plus, Camera,
   LayoutDashboard, Inbox, Bell, Video, Upload, Trash2, AlertCircle,
-  Award, ChevronRight, Eye, Clock, Wifi, CreditCard,
+  Award, ChevronRight, Eye, Clock, Wifi, CreditCard, FileText, ExternalLink,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { Navigate, Link } from "react-router-dom";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-type TabKey = "home" | "requests" | "notifications" | "reviews" | "demo_views";
+type TabKey = "home" | "requests" | "notifications" | "reviews" | "demo_views" | "contracts";
 
 const TutorDashboard = () => {
   const { user, role, loading: authLoading } = useAuth();
@@ -33,6 +34,9 @@ const TutorDashboard = () => {
   const [reviews, setReviews] = useState<(Review & { profile?: Profile })[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [demoViews, setDemoViews] = useState<{ id: string; student_name: string; watched_at: string; completed: boolean; rating: number | null; comment: string | null }[]>([]);
+  const [contracts, setContracts] = useState<any[]>([]);
+  const [selectedContract, setSelectedContract] = useState<any>(null);
+  const [selectedClassroomCode, setSelectedClassroomCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -107,6 +111,21 @@ const TutorDashboard = () => {
           })
         );
         setDemoViews(enrichedDv);
+      }
+
+      // Contracts
+      const { data: contractsData } = await supabase
+        .from("contracts").select("*").eq("tutor_id", user.id).order("created_at", { ascending: false });
+      if (contractsData) {
+        const enrichedContracts = await Promise.all(
+          (contractsData as any[]).map(async (c) => {
+            const { data: sp } = await supabase.from("profiles").select("full_name").eq("user_id", c.student_id).single();
+            const { data: deal } = await supabase.from("deals").select("classroom_code, status").eq("id", c.deal_id).single();
+            const { count: sigCount } = await supabase.from("contract_signatures").select("id", { count: "exact", head: true }).eq("contract_id", c.id);
+            return { ...c, student_name: sp?.full_name || "Unknown", classroom_code: deal?.classroom_code, deal_status: deal?.status, signature_count: sigCount || 0 };
+          })
+        );
+        setContracts(enrichedContracts);
       }
 
       setLoading(false);
@@ -286,7 +305,7 @@ const TutorDashboard = () => {
   const bottomTabs: { key: TabKey; label: string; icon: typeof LayoutDashboard; badge?: number }[] = [
     { key: "home", label: "Home", icon: LayoutDashboard },
     { key: "requests", label: "Requests", icon: Inbox, badge: pendingCount },
-    { key: "demo_views", label: "Demo", icon: Eye, badge: demoViews.filter(d => !d.completed).length || undefined },
+    { key: "contracts", label: "Contracts", icon: FileText, badge: contracts.filter(c => c.signature_count < 2).length || undefined },
     { key: "notifications", label: "Alerts", icon: Bell, badge: unreadNotifs },
     { key: "reviews", label: "Reviews", icon: Star },
   ];
@@ -815,6 +834,53 @@ const TutorDashboard = () => {
             </motion.div>
           )}
 
+          {activeTab === "contracts" && (
+            <motion.div key="contracts" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}
+              className="px-4 py-4 sm:px-6">
+              <h2 className="font-display text-lg font-bold text-foreground mb-4">Contracts & Classrooms</h2>
+              <div className="space-y-3">
+                {contracts.length === 0 ? (
+                  <div className="rounded-2xl border border-border bg-card p-12 text-center shadow-card">
+                    <FileText className="mx-auto h-10 w-10 text-muted-foreground" />
+                    <p className="mt-3 font-display text-base font-semibold text-foreground">No contracts yet</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Contracts appear when students finalize deals with you.</p>
+                  </div>
+                ) : (
+                  contracts.map((c: any) => (
+                    <motion.div key={c.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
+                      className="rounded-xl border border-border bg-card p-4 shadow-card">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-foreground">📚 {c.subject || "Tuition"}</span>
+                            <Badge className={c.signature_count >= 2 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"}>
+                              {c.signature_count >= 2 ? "✅ Classroom Ready" : `⏳ ${c.signature_count}/2 Signed`}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">Student: {c.student_name}</p>
+                          <p className="text-[10px] text-muted-foreground">{new Date(c.created_at).toLocaleDateString()}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" className="text-xs gap-1"
+                            onClick={() => { setSelectedContract(c); setSelectedClassroomCode(c.classroom_code); }}>
+                            <FileText className="h-3 w-3" /> View
+                          </Button>
+                          {c.signature_count >= 2 && c.classroom_code && (
+                            <a href="https://noescape-rw.netlify.app/landing" target="_blank" rel="noopener noreferrer">
+                              <Button size="sm" className="text-xs gap-1">
+                                <ExternalLink className="h-3 w-3" /> Classroom
+                              </Button>
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))
+                )}
+              </div>
+            </motion.div>
+          )}
+
           {activeTab === "reviews" && (
             <motion.div key="reviews" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}
               className="px-4 py-4 sm:px-6">
@@ -910,6 +976,13 @@ const TutorDashboard = () => {
           })}
         </div>
       </nav>
+
+      <ContractModal
+        open={!!selectedContract}
+        onOpenChange={() => setSelectedContract(null)}
+        contract={selectedContract}
+        classroomCode={selectedClassroomCode}
+      />
     </div>
   );
 };
