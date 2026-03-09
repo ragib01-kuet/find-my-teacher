@@ -8,11 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  BookOpen, MessageCircle, Users, Heart, Star, Search, Video, Play, X,
+  BookOpen, MessageCircle, Users, Heart, Star, Search, Video, Play, X, FileText, ExternalLink,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Navigate, Link } from "react-router-dom";
 import { toast } from "sonner";
+import ContractModal from "@/components/ContractModal";
 
 interface EnrichedRequest extends TuitionRequest {
   tutor_name?: string;
