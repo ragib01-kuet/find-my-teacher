@@ -47,6 +47,9 @@ const AdminDashboard = () => {
   const [chatMessages, setChatMessages] = useState<(MessageType & { sender_name?: string })[]>([]);
   const [selectedChat, setSelectedChat] = useState<TuitionRequest | null>(null);
   const [stats, setStats] = useState({ tutors: 0, students: 0, requests: 0, deals: 0 });
+  const [deals, setDeals] = useState<any[]>([]);
+  const [selectedContract, setSelectedContract] = useState<any>(null);
+  const [selectedClassroomCode, setSelectedClassroomCode] = useState<string | null>(null);
 
   useEffect(() => {
     if (role !== "admin") return;
