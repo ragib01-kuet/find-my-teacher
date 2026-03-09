@@ -374,6 +374,47 @@ const StudentDashboard = () => {
             )}
           </AnimatePresence>
 
+          {/* Contracts & Classrooms */}
+          {contracts.length > 0 && (
+            <div className="mb-6">
+              <h2 className="mb-3 font-display text-lg font-semibold text-foreground flex items-center gap-2">
+                <FileText className="h-5 w-5 text-primary" /> Contracts & Classrooms
+              </h2>
+              <div className="space-y-3">
+                {contracts.map((c: any) => (
+                  <motion.div key={c.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
+                    className="rounded-xl border border-border bg-card p-4 shadow-card">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-foreground">📚 {c.subject || "Tuition"}</span>
+                          <Badge className={c.signature_count >= 2 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"}>
+                            {c.signature_count >= 2 ? "✅ Classroom Ready" : `⏳ ${c.signature_count}/2 Signed`}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">Tutor: {c.tutor_name}</p>
+                        <p className="text-[10px] text-muted-foreground">{new Date(c.created_at).toLocaleDateString()}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" className="text-xs gap-1"
+                          onClick={() => { setSelectedContract(c); setSelectedClassroomCode(c.classroom_code); }}>
+                          <FileText className="h-3 w-3" /> View
+                        </Button>
+                        {c.signature_count >= 2 && c.classroom_code && (
+                          <a href="https://noescape-rw.netlify.app/landing" target="_blank" rel="noopener noreferrer">
+                            <Button size="sm" className="text-xs gap-1">
+                              <ExternalLink className="h-3 w-3" /> Classroom
+                            </Button>
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Requests list */}
           <h2 className="mb-3 font-display text-lg font-semibold text-foreground">Your Requests</h2>
           <div className="space-y-3">
