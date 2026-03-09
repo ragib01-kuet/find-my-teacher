@@ -118,9 +118,10 @@ const StudentDashboard = () => {
 
   const handleSubmitDemoRating = async () => {
     if (!activeDemo || !user) return;
-    if (demoRating === 0) { toast.error("Please select a star rating"); return; }
-    if (!demoComment.trim() || demoComment.trim().length < 20) {
-      toast.error("Please write a constructive comment (at least 20 characters).");
+    // Rating is now optional
+    if (demoRating === 0 && !demoComment.trim()) {
+      // Just close without rating
+      setActiveDemo(null);
       return;
     }
     setSubmittingRating(true);
