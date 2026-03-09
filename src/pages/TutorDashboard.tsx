@@ -34,6 +34,9 @@ const TutorDashboard = () => {
   const [reviews, setReviews] = useState<(Review & { profile?: Profile })[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [demoViews, setDemoViews] = useState<{ id: string; student_name: string; watched_at: string; completed: boolean; rating: number | null; comment: string | null }[]>([]);
+  const [contracts, setContracts] = useState<any[]>([]);
+  const [selectedContract, setSelectedContract] = useState<any>(null);
+  const [selectedClassroomCode, setSelectedClassroomCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
