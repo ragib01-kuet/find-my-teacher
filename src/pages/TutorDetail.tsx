@@ -14,7 +14,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  ArrowLeft, BookOpen, MapPin, Star, Calendar, GraduationCap,
+  ArrowLeft, BookOpen, Star, Calendar, GraduationCap, Wifi,
   Heart, Shield, Send, Video, Lock, Play, MessageCircle,
 } from "lucide-react";
 import { motion } from "framer-motion";
