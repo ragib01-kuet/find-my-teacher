@@ -283,10 +283,6 @@ const TutorDetail = () => {
                           <Label>Budget (৳/month)</Label>
                           <Input type="number" placeholder="e.g., 3000" value={interestBudget} onChange={(e) => setInterestBudget(e.target.value)} />
                         </div>
-                        <div className="space-y-2">
-                          <Label>Your Area</Label>
-                          <Input placeholder="e.g., Sonadanga" value={interestArea} onChange={(e) => setInterestArea(e.target.value)} />
-                        </div>
                       </div>
                       <div className="space-y-2">
                         <Label>Message</Label>
