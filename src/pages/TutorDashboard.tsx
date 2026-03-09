@@ -17,7 +17,7 @@ import {
   GraduationCap, Edit3, BookOpen, Star, Phone,
   MessageCircle, Users, Check, X, Save, Plus, Camera,
   LayoutDashboard, Inbox, Bell, Video, Upload, Trash2, AlertCircle,
-  Award, ChevronRight, Eye, Clock, Wifi, CreditCard,
+  Award, ChevronRight, Eye, Clock, Wifi, CreditCard, FileText, ExternalLink,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
