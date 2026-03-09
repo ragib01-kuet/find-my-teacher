@@ -14,9 +14,86 @@ export type Database = {
   }
   public: {
     Tables: {
+      contract_signatures: {
+        Row: {
+          contract_id: string
+          id: string
+          role: string
+          signature_data: string
+          signed_at: string | null
+          user_id: string
+        }
+        Insert: {
+          contract_id: string
+          id?: string
+          role: string
+          signature_data: string
+          signed_at?: string | null
+          user_id: string
+        }
+        Update: {
+          contract_id?: string
+          id?: string
+          role?: string
+          signature_data?: string
+          signed_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_signatures_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contracts: {
+        Row: {
+          contract_text: string
+          created_at: string | null
+          deal_id: string
+          id: string
+          student_id: string
+          subject: string | null
+          tutor_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          contract_text: string
+          created_at?: string | null
+          deal_id: string
+          id?: string
+          student_id: string
+          subject?: string | null
+          tutor_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          contract_text?: string
+          created_at?: string | null
+          deal_id?: string
+          id?: string
+          student_id?: string
+          subject?: string | null
+          tutor_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contracts_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deals: {
         Row: {
           admin_notes: string | null
+          classroom_code: string | null
           commission_amount: number | null
           contact_revealed: boolean | null
           created_at: string
@@ -29,6 +106,7 @@ export type Database = {
         }
         Insert: {
           admin_notes?: string | null
+          classroom_code?: string | null
           commission_amount?: number | null
           contact_revealed?: boolean | null
           created_at?: string
@@ -41,6 +119,7 @@ export type Database = {
         }
         Update: {
           admin_notes?: string | null
+          classroom_code?: string | null
           commission_amount?: number | null
           contact_revealed?: boolean | null
           created_at?: string
