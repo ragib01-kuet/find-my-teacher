@@ -347,6 +347,9 @@ const AdminDashboard = () => {
               <TabsTrigger value="requests" className="gap-1 text-xs sm:gap-2 sm:text-sm">
                 <MessageCircle className="h-3.5 w-3.5" /> Requests
               </TabsTrigger>
+              <TabsTrigger value="deals" className="gap-1 text-xs sm:gap-2 sm:text-sm">
+                <Handshake className="h-3.5 w-3.5" /> Deals ({deals.length})
+              </TabsTrigger>
               <TabsTrigger value="reports" className="gap-1 text-xs sm:gap-2 sm:text-sm">
                 <AlertTriangle className="h-3.5 w-3.5" /> Reports
               </TabsTrigger>
