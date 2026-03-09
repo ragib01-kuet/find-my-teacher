@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      auto_approval_patterns: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          pattern: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          pattern: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          pattern?: string
+        }
+        Relationships: []
+      }
       contract_signatures: {
         Row: {
           contract_id: string

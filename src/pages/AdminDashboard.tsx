@@ -50,6 +50,9 @@ const AdminDashboard = () => {
   const [deals, setDeals] = useState<any[]>([]);
   const [selectedContract, setSelectedContract] = useState<any>(null);
   const [selectedClassroomCode, setSelectedClassroomCode] = useState<string | null>(null);
+  const [approvalPatterns, setApprovalPatterns] = useState<{ id: string; pattern: string; description: string | null; is_active: boolean; created_at: string }[]>([]);
+  const [newPattern, setNewPattern] = useState("");
+  const [newPatternDesc, setNewPatternDesc] = useState("");
 
   useEffect(() => {
     if (role !== "admin") return;
@@ -157,6 +160,13 @@ const AdminDashboard = () => {
         );
         setDeals(enrichedDeals);
       }
+
+      // Auto-approval patterns
+      const { data: patterns } = await supabase
+        .from("auto_approval_patterns")
+        .select("*")
+        .order("created_at", { ascending: true });
+      if (patterns) setApprovalPatterns(patterns as any);
     };
     fetchAll();
   }, [role]);
@@ -352,6 +362,9 @@ const AdminDashboard = () => {
               </TabsTrigger>
               <TabsTrigger value="reports" className="gap-1 text-xs sm:gap-2 sm:text-sm">
                 <AlertTriangle className="h-3.5 w-3.5" /> Reports
+              </TabsTrigger>
+              <TabsTrigger value="auto-approval" className="gap-1 text-xs sm:gap-2 sm:text-sm">
+                <Zap className="h-3.5 w-3.5" /> Auto Approval
               </TabsTrigger>
             </TabsList>
 
@@ -560,6 +573,147 @@ const AdminDashboard = () => {
                   </div>
                 ))}
                 {reports.length === 0 && <p className="py-12 text-center text-muted-foreground">No reports filed.</p>}
+              </div>
+            </TabsContent>
+
+            {/* Auto Approval Patterns */}
+            <TabsContent value="auto-approval">
+              <div className="space-y-6">
+                <div className="rounded-2xl border border-border bg-card p-6 shadow-card">
+                  <h3 className="font-display text-base font-semibold text-foreground mb-1">Email Auto-Approval Rules</h3>
+                  <p className="text-xs text-muted-foreground mb-5">
+                    Tutors signing up with emails matching these patterns will be automatically approved — no manual review needed.
+                  </p>
+
+                  {/* Add new pattern */}
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-end mb-6">
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs">Email Pattern</Label>
+                      <Input
+                        placeholder="e.g. @stud.kuet.ac.bd"
+                        value={newPattern}
+                        onChange={(e) => setNewPattern(e.target.value)}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs">Description (optional)</Label>
+                      <Input
+                        placeholder="e.g. KUET student emails"
+                        value={newPatternDesc}
+                        onChange={(e) => setNewPatternDesc(e.target.value)}
+                        className="text-sm"
+                      />
+                    </div>
+                    <Button
+                      size="sm"
+                      className="gap-1.5 bg-coral-gradient text-primary-foreground hover:opacity-90"
+                      disabled={!newPattern.trim()}
+                      onClick={async () => {
+                        const pattern = newPattern.trim();
+                        if (!pattern.startsWith("@")) {
+                          toast.error("Pattern must start with @ (e.g. @university.edu)");
+                          return;
+                        }
+                        const { data, error } = await supabase
+                          .from("auto_approval_patterns")
+                          .insert({
+                            pattern,
+                            description: newPatternDesc.trim() || null,
+                            created_by: user!.id,
+                          } as any)
+                          .select()
+                          .single();
+                        if (error) {
+                          if (error.message.includes("duplicate")) {
+                            toast.error("This pattern already exists.");
+                          } else {
+                            toast.error("Failed to add: " + error.message);
+                          }
+                        } else {
+                          setApprovalPatterns((prev) => [...prev, data as any]);
+                          setNewPattern("");
+                          setNewPatternDesc("");
+                          toast.success(`Pattern "${pattern}" added! New tutors with matching emails will be auto-approved.`);
+                        }
+                      }}
+                    >
+                      <Zap className="h-3.5 w-3.5" /> Add Rule
+                    </Button>
+                  </div>
+
+                  {/* Existing patterns */}
+                  <div className="space-y-3">
+                    {approvalPatterns.length === 0 ? (
+                      <div className="py-8 text-center text-muted-foreground text-sm">
+                        No auto-approval rules configured. All tutors will require manual approval.
+                      </div>
+                    ) : (
+                      approvalPatterns.map((p) => (
+                        <div key={p.id} className="flex items-center justify-between rounded-xl border border-border bg-secondary/30 px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${p.is_active ? "bg-green-100 dark:bg-green-900/30" : "bg-secondary"}`}>
+                              <Mail className={`h-4 w-4 ${p.is_active ? "text-green-600" : "text-muted-foreground"}`} />
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold text-foreground font-mono">{p.pattern}</p>
+                              {p.description && <p className="text-xs text-muted-foreground">{p.description}</p>}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className={`text-[10px] ${p.is_active ? "border-green-500/30 text-green-600" : "text-muted-foreground"}`}>
+                              {p.is_active ? "Active" : "Disabled"}
+                            </Badge>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 text-xs"
+                              onClick={async () => {
+                                const { error } = await supabase
+                                  .from("auto_approval_patterns")
+                                  .update({ is_active: !p.is_active } as any)
+                                  .eq("id", p.id);
+                                if (!error) {
+                                  setApprovalPatterns((prev) =>
+                                    prev.map((item) => item.id === p.id ? { ...item, is_active: !item.is_active } : item)
+                                  );
+                                  toast.success(p.is_active ? "Rule disabled" : "Rule enabled");
+                                }
+                              }}
+                            >
+                              {p.is_active ? <Ban className="h-3 w-3" /> : <CheckCircle className="h-3 w-3" />}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 text-xs text-destructive hover:text-destructive"
+                              onClick={async () => {
+                                const { error } = await supabase
+                                  .from("auto_approval_patterns")
+                                  .delete()
+                                  .eq("id", p.id);
+                                if (!error) {
+                                  setApprovalPatterns((prev) => prev.filter((item) => item.id !== p.id));
+                                  toast.success("Pattern removed");
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-border bg-secondary/20 p-4">
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    <strong className="text-foreground">How it works:</strong> When a tutor signs up, their email is checked against all active patterns. 
+                    If it matches (e.g., <code className="text-foreground bg-secondary px-1 rounded">user@stud.kuet.ac.bd</code> matches <code className="text-foreground bg-secondary px-1 rounded">@stud.kuet.ac.bd</code>), 
+                    their profile is instantly approved. Otherwise, they enter the pending queue for manual review.
+                  </p>
+                </div>
               </div>
             </TabsContent>
           </Tabs>

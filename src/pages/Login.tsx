@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { GraduationCap, Mail, Lock, ArrowRight, User, Phone, Building } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { AppRole } from "@/types/database";
 
@@ -27,6 +28,20 @@ const Login = () => {
   const [signupDepartment, setSignupDepartment] = useState("");
   const [signupUniversity, setSignupUniversity] = useState("");
   const [signupLoading, setSignupLoading] = useState(false);
+  const [autoApprovalPatterns, setAutoApprovalPatterns] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchPatterns = async () => {
+      const { data } = await supabase
+        .from("auto_approval_patterns")
+        .select("pattern")
+        .eq("is_active", true);
+      if (data) setAutoApprovalPatterns(data.map((p: any) => p.pattern));
+    };
+    fetchPatterns();
+  }, []);
+
+  const isAutoApprovedEmail = autoApprovalPatterns.some((p) => signupEmail.endsWith(p));
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,7 +77,11 @@ const Login = () => {
       toast.error(error.message);
     } else {
       if (signupRole === "tutor") {
-        toast.success("Account created! Your profile is pending admin approval.");
+        if (isAutoApprovedEmail) {
+          toast.success("Account created & auto-approved! Redirecting to your dashboard.");
+        } else {
+          toast.success("Account created! Your profile is pending admin approval.");
+        }
         navigate("/my-profile");
       } else {
         toast.success("Account created! Find your perfect tutor.");
@@ -158,6 +177,9 @@ const Login = () => {
                     <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input placeholder="you@example.com" className="pl-10" type="email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} required />
                   </div>
+                  {signupRole === "tutor" && signupEmail && isAutoApprovedEmail && (
+                    <p className="text-xs text-green-600 mt-1">✅ Matching email detected — you'll be auto-approved!</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Password *</Label>
@@ -204,9 +226,15 @@ const Login = () => {
                         <Input placeholder="e.g., Mathematics, Physics" className="pl-9 text-sm" value={signupDepartment} onChange={(e) => setSignupDepartment(e.target.value)} required />
                       </div>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      ⚠️ All tutor profiles require admin approval before becoming visible.
-                    </p>
+                    {isAutoApprovedEmail ? (
+                      <p className="text-xs text-green-600">
+                        ✅ Your email matches an auto-approval rule. You'll be approved instantly!
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        ⚠️ Your profile will require admin approval before becoming visible.
+                      </p>
+                    )}
                   </div>
                 )}
 
