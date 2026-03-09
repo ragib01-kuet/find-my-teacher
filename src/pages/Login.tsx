@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { GraduationCap, Mail, Lock, ArrowRight, User, Phone, Building, Calendar } from "lucide-react";
+import { GraduationCap, Mail, Lock, ArrowRight, User, Phone, Building } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,7 +25,7 @@ const Login = () => {
   const [signupPhone, setSignupPhone] = useState("");
   const [signupRole, setSignupRole] = useState<AppRole>("student");
   const [signupDepartment, setSignupDepartment] = useState("");
-  const [signupBatch, setSignupBatch] = useState("");
+  const [signupUniversity, setSignupUniversity] = useState("");
   const [signupLoading, setSignupLoading] = useState(false);
 
   const isKuetEmail = signupEmail.endsWith("@stud.kuet.ac.bd");
@@ -45,15 +45,19 @@ const Login = () => {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (signupRole === "tutor" && (!signupDepartment || !signupBatch)) {
-      toast.error("Please fill in department and batch.");
+    if (!signupUniversity.trim()) {
+      toast.error("Please enter your university name.");
+      return;
+    }
+    if (signupRole === "tutor" && !signupDepartment) {
+      toast.error("Please fill in your department.");
       return;
     }
     setSignupLoading(true);
     const { error } = await signUp(signupEmail, signupPassword, signupName, signupRole, {
       phone: signupPhone,
       department: signupDepartment,
-      batch: signupBatch,
+      university_name: signupUniversity,
     });
     setSignupLoading(false);
     if (error) {
@@ -61,14 +65,15 @@ const Login = () => {
     } else {
       if (signupRole === "tutor") {
         if (isKuetEmail) {
-          toast.success("Account created & auto-approved! You have a KUET email. You can now sign in.");
+          toast.success("Account created & auto-approved! Redirecting to your dashboard.");
         } else {
           toast.success("Account created! Your profile is pending admin approval.");
         }
+        navigate("/my-profile");
       } else {
-        toast.success("Account created! You can now sign in.");
+        toast.success("Account created! Find your perfect tutor.");
+        navigate("/discover");
       }
-      navigate("/");
     }
   };
 
@@ -147,14 +152,14 @@ const Login = () => {
               </div>
               <form className="mt-6 space-y-4" onSubmit={handleSignup}>
                 <div className="space-y-2">
-                  <Label>Full Name</Label>
+                  <Label>Full Name *</Label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input placeholder="Your full name" className="pl-10" value={signupName} onChange={(e) => setSignupName(e.target.value)} required />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Email</Label>
+                  <Label>Email *</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input placeholder="you@stud.kuet.ac.bd" className="pl-10" type="email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} required />
@@ -164,7 +169,7 @@ const Login = () => {
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label>Password</Label>
+                  <Label>Password *</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input type="password" placeholder="Min 6 characters" className="pl-10" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} required minLength={6} />
@@ -175,6 +180,13 @@ const Login = () => {
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input placeholder="01XXXXXXXXX" className="pl-10" value={signupPhone} onChange={(e) => setSignupPhone(e.target.value)} />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>University Name *</Label>
+                  <div className="relative">
+                    <Building className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input placeholder="e.g., KUET" className="pl-10" value={signupUniversity} onChange={(e) => setSignupUniversity(e.target.value)} required />
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -194,20 +206,11 @@ const Login = () => {
                 {signupRole === "tutor" && (
                   <div className="space-y-3 rounded-xl border border-border bg-secondary/30 p-3">
                     <p className="text-xs font-medium text-foreground">Tutor Details</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-xs">Department</Label>
-                        <div className="relative">
-                          <Building className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                          <Input placeholder="e.g., CSE" className="pl-9 text-sm" value={signupDepartment} onChange={(e) => setSignupDepartment(e.target.value)} required />
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">Batch/Session</Label>
-                        <div className="relative">
-                          <Calendar className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                          <Input placeholder="e.g., 2020-21" className="pl-9 text-sm" value={signupBatch} onChange={(e) => setSignupBatch(e.target.value)} required />
-                        </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Department *</Label>
+                      <div className="relative">
+                        <Building className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                        <Input placeholder="e.g., CSE" className="pl-9 text-sm" value={signupDepartment} onChange={(e) => setSignupDepartment(e.target.value)} required />
                       </div>
                     </div>
                     {!isKuetEmail && (

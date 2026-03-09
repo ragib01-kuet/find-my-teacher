@@ -1,4 +1,4 @@
-import { Heart, MapPin, BookOpen, Star, ArrowRight } from "lucide-react";
+import { Heart, BookOpen, Star, ArrowRight, GraduationCap, Wifi } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
@@ -10,6 +10,7 @@ interface TutorCardProps {
   photo: string;
   department: string;
   session: string;
+  university_name?: string;
   subjects: string[];
   areas: string[];
   fee: string;
@@ -22,12 +23,10 @@ const TutorCard = ({
   name,
   photo,
   department,
-  session,
+  university_name,
   subjects,
-  areas,
   fee,
   rating,
-  experience,
 }: TutorCardProps) => {
   return (
     <motion.div
@@ -38,7 +37,7 @@ const TutorCard = ({
       transition={{ duration: 0.3 }}
       className="group relative overflow-hidden rounded-2xl border border-border bg-card shadow-card transition-shadow hover:shadow-card-hover"
     >
-      {/* Photo - constrained height */}
+      {/* Photo */}
       <div className="relative aspect-[4/3] overflow-hidden sm:aspect-[3/4]">
         <img
           src={photo}
@@ -51,7 +50,12 @@ const TutorCard = ({
           <div className="flex items-end justify-between">
             <div>
               <h3 className="font-display text-lg font-bold text-primary-foreground sm:text-xl">{name}</h3>
-              <p className="mt-0.5 text-xs text-primary-foreground/80 sm:text-sm">{department} • {session}</p>
+              {/* University Name — Most Prominent */}
+              <div className="mt-1 flex items-center gap-1.5">
+                <GraduationCap className="h-3.5 w-3.5 text-primary-foreground/90" />
+                <span className="text-sm font-semibold text-primary-foreground/95">{university_name || "KUET"}</span>
+              </div>
+              <p className="mt-0.5 text-xs text-primary-foreground/70">{department}</p>
             </div>
             <div className="flex items-center gap-1 rounded-full bg-background/20 px-2 py-0.5 backdrop-blur-sm sm:px-2.5 sm:py-1">
               <Star className="h-3 w-3 fill-gold text-gold sm:h-3.5 sm:w-3.5" />
@@ -80,9 +84,10 @@ const TutorCard = ({
           )}
         </div>
 
+        {/* Preferred Medium: Online */}
         <div className="mt-2.5 flex items-center gap-1.5 text-xs text-muted-foreground sm:mt-3 sm:text-sm">
-          <MapPin className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-          {areas.slice(0, 2).join(", ")}
+          <Wifi className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+          Online Only
         </div>
 
         <div className="mt-3 flex items-center justify-between sm:mt-4">
