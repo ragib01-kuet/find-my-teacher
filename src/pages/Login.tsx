@@ -226,9 +226,15 @@ const Login = () => {
                         <Input placeholder="e.g., Mathematics, Physics" className="pl-9 text-sm" value={signupDepartment} onChange={(e) => setSignupDepartment(e.target.value)} required />
                       </div>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      ⚠️ All tutor profiles require admin approval before becoming visible.
-                    </p>
+                    {isAutoApprovedEmail ? (
+                      <p className="text-xs text-green-600">
+                        ✅ Your email matches an auto-approval rule. You'll be approved instantly!
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        ⚠️ Your profile will require admin approval before becoming visible.
+                      </p>
+                    )}
                   </div>
                 )}
 
