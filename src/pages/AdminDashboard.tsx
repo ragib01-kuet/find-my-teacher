@@ -160,6 +160,13 @@ const AdminDashboard = () => {
         );
         setDeals(enrichedDeals);
       }
+
+      // Auto-approval patterns
+      const { data: patterns } = await supabase
+        .from("auto_approval_patterns")
+        .select("*")
+        .order("created_at", { ascending: true });
+      if (patterns) setApprovalPatterns(patterns as any);
     };
     fetchAll();
   }, [role]);
