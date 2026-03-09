@@ -33,7 +33,6 @@ const TutorDetail = () => {
   const [interestSubject, setInterestSubject] = useState("");
   const [interestClass, setInterestClass] = useState("");
   const [interestBudget, setInterestBudget] = useState("");
-  const [interestArea, setInterestArea] = useState("");
   const [interestName, setInterestName] = useState("");
   const [sending, setSending] = useState(false);
 
