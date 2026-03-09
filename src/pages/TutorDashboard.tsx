@@ -13,10 +13,10 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  GraduationCap, Edit3, MapPin, BookOpen, Star, Calendar, Phone,
+  GraduationCap, Edit3, BookOpen, Star, Phone,
   MessageCircle, Users, Check, X, Save, Plus, Camera,
   LayoutDashboard, Inbox, Bell, Video, Upload, Trash2, AlertCircle,
-  TrendingUp, Award, ChevronRight, Eye, Clock,
+  Award, ChevronRight, Eye, Clock, Wifi, CreditCard,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -38,17 +38,17 @@ const TutorDashboard = () => {
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [uploadingIdCard, setUploadingIdCard] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("home");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const idCardInputRef = useRef<HTMLInputElement>(null);
 
   const [editBio, setEditBio] = useState("");
   const [editFee, setEditFee] = useState("");
   const [editExperience, setEditExperience] = useState("");
   const [editSubjects, setEditSubjects] = useState<string[]>([]);
-  const [editAreas, setEditAreas] = useState<string[]>([]);
   const [newSubject, setNewSubject] = useState("");
-  const [newArea, setNewArea] = useState("");
 
   useEffect(() => {
     if (!user || role !== "tutor") return;
