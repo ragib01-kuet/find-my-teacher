@@ -116,7 +116,7 @@ const TutorDetail = () => {
     else {
       toast.success("Interest sent! The tutor will be notified.");
       setShowInterest(false);
-      setInterestMsg(""); setInterestSubject(""); setInterestClass(""); setInterestBudget(""); setInterestArea("");
+      setInterestMsg(""); setInterestSubject(""); setInterestClass(""); setInterestBudget("");
     }
   };
 
