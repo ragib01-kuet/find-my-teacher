@@ -77,7 +77,11 @@ const Login = () => {
       toast.error(error.message);
     } else {
       if (signupRole === "tutor") {
-        toast.success("Account created! Your profile is pending admin approval.");
+        if (isAutoApprovedEmail) {
+          toast.success("Account created & auto-approved! Redirecting to your dashboard.");
+        } else {
+          toast.success("Account created! Your profile is pending admin approval.");
+        }
         navigate("/my-profile");
       } else {
         toast.success("Account created! Find your perfect tutor.");
