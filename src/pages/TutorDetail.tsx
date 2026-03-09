@@ -109,7 +109,6 @@ const TutorDetail = () => {
       subject: interestSubject,
       class_level: interestClass || null,
       budget: interestBudget ? parseInt(interestBudget) : null,
-      area: interestArea || null,
       student_name: interestName || null,
     });
     setSending(false);
