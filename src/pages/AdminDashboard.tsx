@@ -504,6 +504,45 @@ const AdminDashboard = () => {
               </div>
             </TabsContent>
 
+            {/* Deals */}
+            <TabsContent value="deals">
+              <div className="space-y-3">
+                {deals.length === 0 ? (
+                  <div className="rounded-2xl border border-border bg-card p-10 text-center shadow-card">
+                    <Handshake className="mx-auto h-10 w-10 text-muted-foreground" />
+                    <p className="mt-3 font-display text-base font-semibold text-foreground">No deals yet</p>
+                  </div>
+                ) : (
+                  deals.map((deal: any) => (
+                    <div key={deal.id} className="rounded-xl border border-border bg-card p-4 shadow-card">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-semibold text-foreground">{deal.student_name}</span>
+                            <span className="text-muted-foreground text-xs">↔</span>
+                            <span className="text-sm font-semibold text-foreground">{deal.tutor_name}</span>
+                            <Badge className={`text-[10px] ${statusColor(deal.status)}`}>{deal.status}</Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {deal.tutor_university} • {deal.tutor_department} • 📚 {deal.subject}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            {new Date(deal.created_at).toLocaleString()} • Signatures: {deal.signature_count}/2
+                          </p>
+                        </div>
+                        {deal.contract && (
+                          <Button size="sm" variant="outline" className="text-xs gap-1"
+                            onClick={() => { setSelectedContract(deal.contract); setSelectedClassroomCode(deal.classroom_code); }}>
+                            <FileText className="h-3 w-3" /> Contract
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </TabsContent>
+
             {/* Reports */}
             <TabsContent value="reports">
               <div className="space-y-3">
