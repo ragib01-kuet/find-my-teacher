@@ -8,8 +8,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { getProfileCompletion } from "@/types/database";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useAuth } from "@/hooks/useAuth";
 
 interface FeaturedTutor {
   id: string;
@@ -28,6 +29,17 @@ interface FeaturedTutor {
 
 const Index = () => {
   const [tutors, setTutors] = useState<FeaturedTutor[]>([]);
+  const navigate = useNavigate();
+  const { user, role, loading } = useAuth();
+
+  useEffect(() => {
+    if (loading) return;
+    if (!user || !role) return;
+    // Avoid flashing landing page after login
+    if (role === "admin") navigate("/admin", { replace: true });
+    else if (role === "tutor") navigate("/my-profile", { replace: true });
+    else navigate("/dashboard", { replace: true });
+  }, [user, role, loading, navigate]);
 
   useEffect(() => {
     const fetchFeatured = async () => {
@@ -79,11 +91,20 @@ const Index = () => {
   return (
     <div className="min-h-screen">
       <Navbar />
+      {loading && (
+        <div className="flex min-h-[30vh] items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        </div>
+      )}
+      {!loading && (
       <HeroSection />
+      )}
+      {!loading && (
       <FeaturesSection />
+      )}
 
       {/* Featured Tutors */}
-      {tutors.length > 0 && (
+      {!loading && tutors.length > 0 && (
         <section className="py-16 sm:py-24">
           <div className="container px-4">
             <motion.div
@@ -125,6 +146,7 @@ const Index = () => {
       )}
 
       {/* CTA */}
+      {!loading && (
       <section className="py-16 sm:py-24">
         <div className="container px-4">
           <motion.div
@@ -155,6 +177,7 @@ const Index = () => {
           </motion.div>
         </div>
       </section>
+      )}
 
       <Footer />
     </div>

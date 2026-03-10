@@ -12,6 +12,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { AppRole } from "@/types/database";
 
+const defaultPathForRole = (role: AppRole | null) => {
+  switch (role) {
+    case "admin":
+      return "/admin";
+    case "tutor":
+      return "/my-profile";
+    case "student":
+    default:
+      return "/dashboard";
+  }
+};
+
 const Login = () => {
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
@@ -47,12 +59,31 @@ const Login = () => {
     e.preventDefault();
     setLoginLoading(true);
     const { error } = await signIn(loginEmail, loginPassword);
-    setLoginLoading(false);
     if (error) {
+      setLoginLoading(false);
       toast.error(error.message);
     } else {
-      toast.success("Welcome back!");
-      navigate("/");
+      // Resolve role immediately to avoid flashing landing page
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user?.id;
+      if (userId) {
+        const { data: roleData, error: roleError } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (roleError) {
+          toast.success("Welcome back!");
+          navigate("/dashboard");
+        } else {
+          toast.success("Welcome back!");
+          navigate(defaultPathForRole((roleData as any)?.role ?? null));
+        }
+      } else {
+        toast.success("Welcome back!");
+        navigate("/dashboard");
+      }
+      setLoginLoading(false);
     }
   };
 
